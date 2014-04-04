@@ -1,0 +1,50 @@
+This is POSH version 0.1: it is a very very very basic piece of software,
+and therefore has no automake/autoconf system yet. This is scheduled for 
+the next release. I promise.
+
+Compilation
+-----------
+
+All the source code is located in the src/ directory. A Makefile is there too.
+Please make sure the TOOLS variable is properly set to the directory where
+Boost is installed on your system.
+
+POSH can be compiled simply by typing:
+  make
+
+Example code
+------------
+
+A small piece of code was place in the example/ directory in order to serve
+as an example. It can be compiled and run from the Makefile that is located
+in the src/ directory dy typing:
+  make bench
+
+The output gives the time take by put and get operations on different buffer 
+sizes and the corresponding bandwidth.
+
+Tuning
+------
+
+For some specific and critical operations, several implementations are available
+in POSH. In order to avoid making this choice at run-time (which takes some time 
+during the execution), choice is made at compile-time.
+
+Memory copy is a highly-critical operation in POSH: it is the major operation
+made in the communication engine to move data between processes. Several 
+implementations are available, and which one is the most efficient is totally
+system-dependant. It is set by the MEMCPYTYPE variable in the Makefile.
+
+Available implementations and the corresponding MEMCPYTYPE value are:
+- _USE_MEMCPY_ : uses the stock mempy() routine. Decently quick on most systems.
+- _USE_VECTOR_COPY_ : uses the compiler's vectorization capabilities
+- _USE_PTR_VEC_COPY_ : variant of _USE_VECTOR_COPY_
+- _USE_KER_MEMCPY_ : another asm implementation of memcpy
+- _USE_MMX_MEMCPY_ : uses MMX instructions to optimize the copy
+- _USE_MMX2_MEMCPY_ : uses MMX2 instructions to optimize the copy
+- _USE_SSE_MEMCPY_ : uses SSE instructions to optimize the copy
+
+Very soon, several implementations will be available for collective communications
+too. The family of algorithms will be set by the COLLTYPE variable in the 
+Makefile. In this release, only one family of algorithms is available. New ones
+will be available in later versions.
