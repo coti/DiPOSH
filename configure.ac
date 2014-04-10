@@ -20,17 +20,6 @@
 #
 #
 
-# https://www.lrde.epita.fr/~adl/dl/autotools.pdf
-
-# $ vim configure.ac
-# $ libtoolize --force
-# $ aclocal
-# $ autoheader
-# $ automake --force-missing --add-missing
-# $ autoconf
-
-# VARIOUS INITIALIZATIONS
-
 AC_INIT([POSH: Paris OpenSHMEM],[0.2],[camille.coti@lipn.univ-paris13.fr])
 AM_INIT_AUTOMAKE([-Wall])
 AC_CONFIG_MACRO_DIR([config])
@@ -191,30 +180,3 @@ AC_CONFIG_FILES([
 ])
 AC_OUTPUT
 
-# MYCFLAGS = -Wall  -I$(TOOLS)/include  -Wno-unused-variable -Wno-deprecated-declarations -fPIC -D_GNU_SOURCE -std=gnu++11 -Wno-unused-function #-fno-builtin 
-# MYLDFLAGS = -Wall #-fno-builtin
-# ifeq ($(MODE),DEBUG)
-#   CFLAGS=-O0 -g -D_DEBUG $(MYCFLAGS)
-#   LDFLAGS=-g -Wall -O0 $(MYLDFLAGS)
-# else
-#   CFLAGS= -O3 $(MYCFLAGS)
-#   LDFLAGS= -O3 $(MYLDFLAGS)
-# endif
-# ifeq ($(MODE),DEBUG)
-#   SHCCFLAGS=-g -O0
-# else
-#   SHCCFLAGS=-g -O3
-# endif
-#
-# COLLTYPE = SHMEM_COLL_BINARY # SHMEM_COLL_FLAT # 
-# MEMCPYTYPE =  _USE_MEMCPY_  # _USE_SSE_MEMCPY_ #
-#
-# CFLAGS += -D$(COLLTYPE) -D$(MEMCPYTYPE) #-D_USE_BLOCK_MEMCPY
-#
-## Possible flags:
-# _DEBUG : debug mode
-# _SAFE : safe mode (activates run-time checks)
-# NB: _DEBUG activates most of the features enabled by the _SAFE flag
-# MULTITHREADED_SPAWN
-
-# LIBS=-L/usr/local/lib -L$(TOOLS)/lib -lboost_thread -lboost_system -lpthread
