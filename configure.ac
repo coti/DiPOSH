@@ -72,6 +72,8 @@ LDFLAGS="${LDFLAGS} -lboost_thread -lboost_system -lpthread"
 
 # flex
 
+#AC_CHECK_PROG([FLEX], [flex lex], [flex])
+#AM_MISSING_PROG([FLEX], [$FLEX])
 AC_PROG_LEX
 
 # gnu++11
@@ -94,8 +96,8 @@ if test $debug = true ; then
   CPPFLAGS="-O0 -g -D_DEBUG ${CPPFLAGS}"
   LDFLAGS="-g -Wall -O0 ${LDFLAGS}"
 else
-  CPPFLAGS=" -O3 ${CPPFLAGS}"
-  LDFLAGS=" -O3 ${LDFLAGS}"
+  CPPFLAGS=" ${CPPFLAGS}"
+  LDFLAGS=" ${LDFLAGS}"
 fi
 
 # SAFE MODE

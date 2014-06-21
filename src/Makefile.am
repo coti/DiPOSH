@@ -32,13 +32,16 @@ libshmem_la_SOURCES = shmem_accessible.cpp   shmem_lock.cpp 		\
 		shmem_init.cpp         shmem_reduce.cpp			\
 		shmem_utils.cpp
 
-libshmem_la_LDFLAGS = -version-info 0:0:1
+libshmem_la_LDFLAGS = -version-info 0:2:0
 
 bin_PROGRAMS = spawn shmem_s2sc 
 
 spawn_SOURCES = spawn.cpp shmem_portability.cpp shmem_constants.h shmem_portability.h
-shmem_s2sc_SOURCES = shmem_s2sc.flex
 
+shmem_s2sc_SOURCES = shmem_s2sc.ll
+
+shmem_s2sc_LDADD = @LEXLIB@ 
+shmem_s2sc_LDFLAGS = -no-undefined
 
 dist_bin_SCRIPTS = shmemcc
 
