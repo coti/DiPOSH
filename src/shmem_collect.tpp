@@ -1,25 +1,3 @@
-/*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
- *                    All rights reserved.
- *
- * This file is part of POSH.
- * 
- * POSH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * POSH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
-
 #include "shmem_internal.h"
 
 #include "shmem_atomic.h"
@@ -33,8 +11,12 @@
 
 #include "shmem_alloc.h"
 
-template <class T, class V> void shmem_template_gather_flat( T*, const T*, size_t, int, int, int, V*, int );
+template <class T, class V> void shmem_template_gather_flat_put( T*, const T*, size_t, int, int, int, V*, int );
 template <class T, class V> void shmem_template_collect_flat( T*, const T*, size_t, int, int, int, V* );
+template <class T, class V> void shmem_template_collect_bruck_get( T*, const T*, size_t, int, int, int, V* );
+template <class T, class V> void shmem_template_collect_bruck_put( T*, const T*, size_t, int, int, int, V* );
+
+int shmem_int_finc( int*, int ); 
 
 template <class T, class V> void shmem_template_collect( T* target, const T* source, size_t nelems, int PE_start, int logPE_stride, int	PE_size, V* pSync ){
 
@@ -59,11 +41,18 @@ template <class T, class V> void shmem_template_collect( T* target, const T* sou
 
 #ifdef SHMEM_COLL_FLAT
     /* Flat collective algorithm: gather + bcast */
-    shmem_template_collect_flat( target, source, nelems, PE_start, logPE_stride, PE_size, pSync );
+    //  shmem_template_collect_flat( target, source, nelems, PE_start, logPE_stride, PE_size, pSync );
+    shmem_template_collect_bruck_get( target, source, nelems, PE_start, logPE_stride, PE_size, pSync );
+
+#else
+#ifdef SHMEM_COLL_BINARY
+    /* Bruck */
+    shmem_template_collect_bruck_put( target, source, nelems, PE_start, logPE_stride, PE_size, pSync );
 
 #else
     #warning "No collective operation algorithm selected -- using flat by default"
     shmem_template_collect_flat( target, source, nelems, PE_start, logPE_stride, PE_size, pSync );
+#endif
 #endif
     
 
@@ -74,7 +63,7 @@ template <class T, class V> void shmem_template_collect_flat( T* target, const T
     /* Gather */
 
     int ROOT = PE_start;
-    shmem_template_gather_flat( target, source, nelems, PE_start, logPE_stride, PE_size, pSync, ROOT );
+    shmem_template_gather_flat_put( target, source, nelems, PE_start, logPE_stride, PE_size, pSync, ROOT );
 #ifdef _DEBUG
     if( myInfo.getRank() == ROOT ) {
         std::cout << "Gathered buff: " << std::endl;
@@ -89,9 +78,269 @@ template <class T, class V> void shmem_template_collect_flat( T* target, const T
 
     shmem_broadcast_template( const_cast<T*>( target ), const_cast<const T*>( target ), nelems * PE_size, ROOT, PE_start, logPE_stride, PE_size, pSync );
 
+#ifdef _DEBUG
+    if( myInfo.getRank() == ROOT ) {
+        std::cout << "Gathered buff: " << std::endl;
+        for( int i = 0 ; i < myInfo.getSize() ; i++ ) {
+            std::cout << target[i] << "  " ;
+        }
+        std::cout << std::endl;
+    }
+#endif
+    
 }
 
-template <class T, class V> void shmem_template_gather_flat( T* target, const T* source, size_t nelems, int PE_start, int logPE_stride, int PE_size, V* pSync, int root ){
+/* At each k-th step, read from rank r + 2^k
+   If the number of PEs is odd, the last read contains only the necessary parts
+   At the end: local shift
+ */
+
+template <class T, class V> void shmem_template_collect_bruck_get( T* target, const T* source, size_t nelems, int PE_start, int logPE_stride, int PE_size, V* pSync ){
+
+
+
+    int size = myInfo.getSize();
+    int rank = myInfo.getRank();
+    
+    if( _shmem_unlikely( ( rank < PE_start ) ||
+                         ( rank >= ( PE_start + ( PE_size * ( 0x1 << logPE_stride) ) ) ) ||
+                         ( ( rank - PE_start ) % ( 0x1 << logPE_stride ) ) != 0 ) ) {
+#ifdef _DEBUG
+        std::cout << "Collect: Rank " << myInfo.getRank() << " is not part of the set of participating PEs." << std::endl;
+#endif
+        return;
+    }
+
+    Collective_t* coll = myInfo.getCollective();
+    Collective_t* remote_coll;
+
+    int distance;
+    int buddy;
+    size_t write_offset;
+    int nb;
+    int i;
+
+    int stride = 0x1 << logPE_stride;
+
+    int* the_end = (int*) shmalloc( sizeof( int ) );
+    *the_end = 0;
+
+    /* okay, I entered the collective */
+
+    coll->inProgress = true;
+    coll->cnt = 0;
+
+    _shmem_memcpy( target, source, PE_size * nelems * sizeof( T ) );
+
+    /* Now comes the real business */
+
+    nb = 0x1;
+    write_offset =  nelems * nb; 
+
+    /* write my step number */
+
+    coll->cnt = 0;
+    buddy = 0;
+
+    for( distance = 1 ; distance < PE_size ; distance <<= 1 ) {
+
+        buddy = ( rank - PE_start + ( distance * stride ) ) % ( PE_size * stride ) + PE_start;
+        std::cout << rank << "] my cnt:" << coll->cnt << std::endl;
+        std::cout << rank << "] my buddy:" << buddy <<  " - distance: " << distance <<  "/" << size << std::endl;
+
+        remote_coll = static_cast<Collective_t *>( _getRemoteAddr( coll, buddy ) );
+        
+        /* Is the remote guy ready? If not, wait.*/
+            
+        while( false == remote_coll->inProgress ) {
+            usleep( SPIN_TIMER );
+        }
+        
+        /* has the remote guy reached this step yet? */
+        
+        while( coll->cnt > remote_coll->cnt ) {
+            usleep( SPIN_TIMER );
+        }
+        
+        shmem_template_get( target + write_offset, target, nelems * nb, buddy );
+        
+#ifdef _DEBUG
+
+        printf( "%d | GOT [ ", rank );
+        for( int i = write_offset ; i < write_offset + nb * nelems ; i++ ) {
+            printf( "%d ", (int) target[i] );
+        }
+        printf( "] - (fetched from %d at %d)\n", buddy, write_offset );
+
+
+        printf( "%d | [ ", rank );
+        for( int i = 0 ; i < PE_size * nelems ; i++ ) {
+            printf( "%d ", (int) target[i] );
+        }
+        printf( "] - (step %d)\n", nb );
+        
+#endif
+
+        nb <<= 1;
+        coll->cnt =  nb;
+        std::cout << rank << "] cnt is now:" << nb << std::endl;
+        
+        write_offset = nelems * nb;
+        
+    }
+
+    /* write on my first buddy that I am done with it */
+
+    //  buddy =  ( rank - PE_start + ( 1 * stride ) ) % ( PE_size * stride ) + PE_start;
+
+    std::cout << rank << "] tell " << buddy << " I am done." << std::endl;
+    shmem_template_p( the_end, (int)1, buddy );
+
+    while( *the_end == 0 ) {
+        usleep( SPIN_TIMER );
+        std::cout << rank << "] the end " << *the_end << std::endl;
+
+    }
+
+    /* local shift */
+    
+    std::rotate( target, target+(size-rank)*nelems, target+((size+1)*nelems-1) );
+
+    // myInfo.collectiveReset();
+    // shfree( the_end );
+    printf( "%d | [ ", rank );
+    for( int i = 0 ; i < PE_size * nelems ; i++ ) {
+            printf( "%d ", (int) target[i] );
+    }
+    printf( "] - (END)\n" );
+    std::cout << rank << "] done." << std::endl;
+
+    coll->cnt = 0;
+    coll->inProgress = false;
+}
+
+/* put-based implemenation of Bruck's algorithm
+ * - put stuff in remote processes' buffer
+ * - increment their lcoal counter
+ * - as soon as this is done and our own local counter has reached the 
+ * proper value, we are done.
+ */
+
+template <class T, class V> void shmem_template_collect_bruck_put( T* target, const T* source, size_t nelems, int PE_start, int logPE_stride, int PE_size, V* pSync ){
+
+    int size = myInfo.getSize();
+    int rank = myInfo.getRank();
+    
+    if( _shmem_unlikely( ( rank < PE_start ) ||
+                         ( rank >= ( PE_start + ( PE_size * ( 0x1 << logPE_stride) ) ) ) ||
+                         ( ( rank - PE_start ) % ( 0x1 << logPE_stride ) ) != 0 ) ) {
+#ifdef _DEBUG
+        std::cout << "Collect: Rank " << myInfo.getRank() << " is not part of the set of participating PEs." << std::endl;
+#endif
+        return;
+    }
+
+    Collective_t* coll = myInfo.getCollective();
+    Collective_t* remote_coll;
+
+    int distance;
+    int buddy;
+    size_t write_offset;
+    int nb;
+    int i;
+    int nbsteps;
+    int rc;
+
+    int stride = 0x1 << logPE_stride;
+
+    /* okay, I entered the collective */
+
+    coll->cnt = 0;
+    coll->inProgress = true;
+
+    _shmem_memcpy( target, source, PE_size * nelems * sizeof( T ) );
+
+
+    /* Now comes the real business */
+
+    buddy = 0;
+    nb = 0x1;
+    write_offset =  nelems * nb; 
+    nbsteps = 0;
+
+    for( distance = 1 ; distance < PE_size ; distance <<= 1 ) {
+
+        buddy = ( rank - PE_start + ( distance * stride ) ) % ( PE_size * stride ) + PE_start;
+        std::cout << rank << "] my cnt:" << coll->cnt << std::endl;
+        std::cout << rank << "] my buddy:" << buddy <<  " - distance: " << distance <<  "/" << size << std::endl;
+
+        remote_coll = static_cast<Collective_t *>( _getRemoteAddr( coll, buddy ) );
+        
+       /* Am I ready for this guy? */
+
+        if( nbsteps >= coll->cnt ) {
+            /* no */
+            usleep( SPIN_TIMER );
+        }
+
+        /* Push data into the remote process's memory */
+
+        shmem_template_put( target + write_offset, source, nelems * nb, buddy );
+        rc = shmem_int_finc( &(coll->cnt), buddy );
+
+        std::cout << rank << "] incremented cnt to: " << rc+1 << " on " << buddy << std::endl;
+        std::cout << rank << "] step "<< nbsteps  << ": write  " << nelems*nb << " elements on " << buddy << " at " << write_offset  << std::endl;
+
+#ifdef _DEBUG
+        printf( "%d | [ ", rank );
+        for( int i = 0 ; i < nb * nelems ; i++ ) {
+            printf( "%d ", (int) target[i] );
+        }
+        printf( "] - (written into %d at %d)\n", buddy, write_offset );
+
+        printf( "%d | [ ", rank );
+        for( int i = 0 ; i < PE_size * nelems ; i++ ) {
+            printf( "%d ", (int) target[i] );
+        }
+        printf( "] - (total)\n" );
+#endif
+
+        nbsteps++;
+
+        nb <<= 1;
+        write_offset = nelems * nb;
+
+    }
+
+    /* Now we are done writing into our buddys' memory, how many processes
+       have written into our own memory? */
+
+    std::cout << rank << "] nb steps: " << nbsteps  << std::endl;
+    std::cout << rank << "] cnt: " << coll->cnt << std::endl;
+
+    while( coll->cnt < nbsteps ){
+        usleep( SPIN_TIMER );
+    }
+
+    /* local shift */
+    
+    std::rotate( target, target+(size-rank)*nelems, target+((size+1)*nelems-1) );
+
+    /* Done! */
+
+    printf( "%d | [ ", rank );
+    for( int i = 0 ; i < PE_size * nelems ; i++ ) {
+            printf( "%d ", (int) target[i] );
+    }
+    printf( "] - (END)\n" );
+    std::cout << rank << "] done." << std::endl;
+
+    coll->cnt = 0;
+    coll->inProgress = false;
+}
+
+
+template <class T, class V> void shmem_template_gather_flat_put( T* target, const T* source, size_t nelems, int PE_start, int logPE_stride, int PE_size, V* pSync, int root ){
 
     int myrank = myInfo.getRank();
     int mysize = myInfo.getSize();
@@ -107,38 +356,13 @@ template <class T, class V> void shmem_template_gather_flat( T* target, const T*
         return;
     }
 
-    char* mutName;
-    asprintf( &mutName, "mtx_shmem_gather_root" );
-    boost::interprocess::named_mutex named_mtx( boost::interprocess::open_or_create, mutName );
-
+    coll->inProgress = true;
+    coll->cnt = 0;
 
     if( root == myrank ) {
         
-        named_mtx.lock(); 
-
-        if( false == coll->inProgress ) {
-            std::cout << "NOT in progress" << std::endl;
-
-            /* Nobody has pushed any data inside of me yet */
-            coll->ptr = target; 
-            coll->cnt = 0;
-            coll->inProgress = true;
-            coll->type = _SHMEM_COLL_GATHER;
-#if defined( _SAFE ) || defined( _DEBUG )
-            coll->space = PE_size * nelems * sizeof( T );
-#endif
-        } else { 
-            std::cout << "ALREADY in progress" << std::endl;
-
-#if defined( _SAFE ) || defined( _DEBUG )
-            // TODO : check que la taille est bonne
-            // check que le type est le bon !
-#endif
-
-        }
-        named_mtx.unlock(); 
-
         _shmem_memcpy( target, source, nelems * sizeof( T ) );
+
         while( coll->cnt != ( mysize - 1 ) ) {
             usleep( SPIN_TIMER );
 #ifdef _DEBUG
@@ -151,83 +375,15 @@ template <class T, class V> void shmem_template_gather_flat( T* target, const T*
 #if _DEBUG
         std::cout << "[" << myrank << "] offset : " << offset << std::endl;
 #endif
-        
-        coll->type = _SHMEM_COLL_GATHER;
-        coll->inProgress = true;
-        coll->ptr = target;
-
-        Collective_t* remote_coll = static_cast<Collective_t *>( _getRemoteAddr( coll, root ) );
-        
-#if defined( _SAFE ) || defined( _DEBUG )
-    
-    /* Check if the collective that is already in progress 
-       is matching the current collective type 
-    */
-        
-        if( !( _SHMEM_COLL_GATHER == remote_coll->type ) && !( _SHMEM_COLL_NONE == remote_coll->type )  ) {
-            std::cerr << "Wrong collective type: process rank " << myInfo.getRank();
-            std::cerr << " attempted to participate to a reduce operation ";
-            std::cerr << "( code " << _SHMEM_COLL_GATHER <<" ) whereas another ";
-            std::cerr << "collective operation is in progress (code ";
-            std::cerr << remote_coll->type << ")" << std::cerr;
-            return;
-        }
-#endif
-        
-        named_mtx.lock();
-        printf( "%d Locked\n", myrank );
-        
-        /* Is the remote guy ready? */
-        if( false == remote_coll->inProgress ) {
-
-#ifdef _DEBUG
-            std::cout << "[" << myrank << "] the remote guy is not ready ; allocate some space for him" << std::endl;
-#endif
-
-            /* init the rest of the collective data structure */
- 
-            remote_coll->type = _SHMEM_COLL_GATHER;
-            remote_coll->cnt = 0;
-            remote_coll->inProgress = true;
-#if defined( _SAFE ) || defined( _DEBUG )
-            remote_coll->space =  PE_size * nelems * sizeof( T );
-#endif
-
-            //   std::cout << "[" << myrank << "] allocated " << PE_size * nelems * sizeof( T ) << " bytes at addr " << std::hex << ptr << std::endl;
-
-        } 
-        named_mtx.unlock();   
-        
+              
         /* put my data (no concurrency in my slice of the target -> no mutex necessary) */
 
         shmem_template_put( target + offset, source, nelems, root );
-
         int k = shmem_template_finc( &(coll->cnt), root );
-
-#ifdef _DEBUG
-        std::cout << myrank << "] done " << k+1 << std::endl;
-
-        // TMP
-        T* tmp = (T*) malloc( PE_size * nelems * sizeof( T ) );
-        shmem_template_get( tmp, static_cast<const T*>( coll->ptr ), nelems * PE_size, root );
-
-        for( unsigned int i = 0 ; i < PE_size * nelems ; i++ ) {
-            std::cout << tmp[i] << " ";
-        }
-        std::cout << endl;
-        free( tmp );
-        // END TMP
-#endif
 
     }
 
-    free( mutName );
-
-    myInfo.collectiveReset();
-
-
-    printf( "[%d] finished gather\n", myrank );
-
+    coll->inProgress = false;
 }
 
 

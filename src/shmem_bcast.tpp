@@ -1,145 +1,77 @@
-/*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
- *                    All rights reserved.
- *
- * This file is part of POSH.
- * 
- * POSH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * POSH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
-
 #include "shmem_internal.h"
 #include "shmem.h"
 #include "shmem_put.h"
+#include "shmem_get.h"
+
 
 template <class T, class V>void shmem_broadcast_template( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync ){
 
 #ifdef SHMEM_COLL_FLAT
-    shmem_broadcast_template_flat( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+    //    shmem_broadcast_template_flat( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+    //    shmem_broadcast_template_flat_get_blocking( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+    shmem_broadcast_template_flat_put_blocking( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
 #else
     #warning "No collective operation algorithm selected -- using flat by default"
-    shmem_broadcast_template_flat( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+    //shmem_broadcast_template_flat_put_blocking( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+shmem_broadcast_template_binomial_put_blocking( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+
 #endif
 
 }
 
 
+bool _shmem_is_remote_process_in_coll( int rank );
+void _shmem_wait_until_entered( int rank ); 
+bool _shmem_part_of_coll( int rank, int PE_start, int PE_size, int logPE_stride );
+int _shmem_binomial_binbase_size( int nb ) ;
+int _shmem_binomial_myfather( int PE_root, int PE_start, int logPE_stride, int PE_size ) ;
+int _shmem_binomial_children( int rank, int size );
+
 /* Various implementations */
 
+/* The difference between the blocking and non-blocking implementations 
+   comes when a process has to write into the memory of a remote process 
+   and this latter process has not entered the collective commnucation yet.
+   - in the non-blocking case, the former performs a remote mem allocation
+   and writes, hence anticipating the moment when the remote process will
+   enter the call;
+   - in the blocking case, it waits until the remote process is ready.
+   Blocking implementations are much simpler.
+ */
 
-template <class T,class V>void shmem_broadcast_template_flat( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync ){
+template <class T,class V>void shmem_broadcast_template_flat_put_blocking( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync ){
 
-    int myRank = myInfo.getRank();
+    int myrank = myInfo.getRank();
     int size = myInfo.getSize();
     bool rc;
 
     Collective_t* coll = myInfo.getCollective();
 
-    char* mutName;
-    asprintf( &mutName, "mtx_shmem_bcast_%d", myRank );
-    boost::interprocess::named_mutex named_mtx( boost::interprocess::open_or_create, mutName ); 
+    myInfo.getCollective()->inProgress = true;
 
-#ifdef _DEBUG
-    std::cout << "Bcast : rank [" << myRank << "] has entered flat bcast" << std::endl;
-#endif
-    
-    while( false == ( rc = named_mtx.try_lock() ) ) {
-        usleep( SPIN_TIMER );
-    }
+    if( _shmem_unlikely( myrank == PE_root ) ) {
+        /* I am the root of the broadcast. Write... */
 
-    std::cout << "rank [" << myRank << "] locked" << std::endl;
-
-    //        named_mtx.lock(); 
-    if( false == coll->inProgress ) {
-        /* Nobody has pushed any data inside of me yet */
-        coll->cnt = 0;
-        coll->inProgress = true;
-        coll->type = _SHMEM_COLL_BCAST;
-#if defined( _SAFE ) || defined( _DEBUG )
-        coll->space = nelems * sizeof( T );
-#endif
-    } else { 
-        /* the data has already been placed in the target buffer */
-#if defined( _SAFE ) || defined( _DEBUG )
-        // TODO : check que la taille est bonne
-#endif
-    }
-    named_mtx.unlock(); 
-
-    if( _shmem_unlikely( myRank == PE_root ) ) {
         int remoteRank, nb;
         nb = 0;
         remoteRank = PE_start;
 
         while( nb < PE_size ) {
 
-            if( _shmem_likely( remoteRank != myRank ) ) {
-                
-                /* TODO : il va y avoir de la factorisation de code possible ici */
-                
-                Collective_t* remote_coll = static_cast<Collective_t *>( _getRemoteAddr( coll, remoteRank ) );
-                
-                char* remMutName;
-                asprintf( &remMutName, "mtx_shmem_bcast_%d", remoteRank );
-                boost::interprocess::named_mutex remote_mtx( boost::interprocess::open_or_create, remMutName ); 
+            _shmem_wait_until_entered( remoteRank );
 
-#if defined( _SAFE ) || defined( _DEBUG )
-                
-                /* Check if the collective that is already in progress 
-                   is matching the current collective type 
-                */
-                
-                if( !( _SHMEM_COLL_BCAST == remote_coll->type ) && !( _SHMEM_COLL_NONE == remote_coll->type )  ) {
-                    std::cerr << "Wrong collective type: process rank " << myInfo.getRank();
-                    std::cerr << " attempted to participate to a Bcast operation ";
-                    std::cerr << "( code " << _SHMEM_COLL_BCAST <<" ) whereas another ";
-                    std::cerr << "collective operation is in progress (code ";
-                    std::cerr << remote_coll->type << ")" << std::cerr;
-                    return;
-                }
-#endif
-                
-                /* Is the remote guy ready? */
-                while( false == ( rc = remote_mtx.try_lock() ) ) {
-                    usleep( SPIN_TIMER );
-                }
-                if( false == remote_coll->inProgress ) {
-                    remote_coll->type = _SHMEM_COLL_BCAST;
-                    remote_coll->cnt = 0;
-                    remote_coll->inProgress = true;
-#if defined( _SAFE ) || defined( _DEBUG )
-                    remote_coll->space =  nelems * sizeof( T );
-#endif
-                    
-                }
-                
+            /* TODO: Possible optimization: write everywhere it is possible, and put
+               the ranks of those that are not ready in a vector. Then loop on this vector
+               until it is empty.
+             */
+
+            if( _shmem_likely( remoteRank != myrank ) ) {
                 shmem_template_put( target, source, nelems, remoteRank );
-                shmem_int_finc( &(myInfo.getCollective()->cnt), remoteRank );
-
-                remote_mtx.unlock(); 
-
-
-#ifdef _DEBUG
-                std::cout << myInfo.getRank() << "] put buff into " << remoteRank << " ; " << nelems << " elements" << std::endl;
-#endif
-                free( remMutName );
+                shmem_int_finc( &(coll->cnt), remoteRank );
             } else {
-                if( _shmem_unlikely( target != source ) ) {
-                    _shmem_memcpy( target, source, nelems*sizeof( T ) );
-                }
+                _shmem_memcpy( target, source, nelems*sizeof( T ) );
             }
+
             nb++;
 
             remoteRank += ( 0x01 << logPE_stride );
@@ -147,100 +79,169 @@ template <class T,class V>void shmem_broadcast_template_flat( T* target, const T
                 remoteRank = remoteRank % size;
             }
         }
+        
+    } else {
+        
+        /* All I have to do is wait until the root has written into my memory */
+         /* Am I part of the subset of participating processes ? */
 
-    } else { // TODO : prendre en compte le stride
-        while( myInfo.getCollective()->cnt != 1 ) {
+        if( _shmem_unlikely( _shmem_part_of_coll( myrank, PE_start, PE_size, logPE_stride ) ) ){
+            return;
+        }
+
+       while( myInfo.getCollective()->cnt != 1 ) {
             usleep( SPIN_TIMER );
         }
         
-        free( mutName );
     }
-    std::cout << "Bcast : rank " << myRank << " done" << std::endl;
-
-    myInfo.collectiveReset();
+    myInfo.getCollective()->inProgress = false;
 }
 
+template <class T,class V>void shmem_broadcast_template_flat_get_blocking( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync ){
 
-template <class T>void shmem_template_bcast_flat( T* target, const T* source, size_t nbElem, int root ) {
+    int myrank = myInfo.getRank();
+    int size = myInfo.getSize();
+    bool rc;
 
-    int myRank = myInfo.getRank();
-    Collective_t* coll;
+    Collective_t* coll = myInfo.getCollective();
+    coll->inProgress = true;
+    coll->cnt = 0;
 
-    coll = myInfo.getCollective();
-    coll->type = _SHMEM_COLL_BCAST;
+    if( _shmem_unlikely( myrank == PE_root ) ) {
 
-    boost::interprocess::named_mutex named_mtx( boost::interprocess::open_or_create, "mtx_shmem_bcast"); 
+        /* I am the root of the broadcast. Wait until everyone has fetched data */
 
-    if( myRank == root ) {
+        _shmem_memcpy( target, source, nelems*sizeof( T ) );
 
-        int remoteRank;
-        
-        for( std::vector<Process>::iterator it = processes.begin(); it != processes.end(); it++ ) {
-            remoteRank = it->getRank() ;
-
-            if( myRank != remoteRank ) {
-                
-                Collective_t* remote_coll = static_cast<Collective_t *>( _getRemoteAddr( coll, remoteRank ));
-                
-#if defined( _SAFE ) || defined( _DEBUG )
-                
-                /* Check if the collective that is already in progress 
-                   is matching the current collective type 
-                */
-
- 
-                if( !( _SHMEM_COLL_BCAST == remote_coll->type ) && !( _SHMEM_COLL_NONE == remote_coll->type ) ) {
-                    std::cerr << "Wrong collective type: process rank " << myInfo.getRank();
-                    std::cerr << " attempted to participate to a bcast operation ";
-                    std::cerr << "( code " << _SHMEM_COLL_BCAST <<" ) whereas another ";
-                    std::cerr << "collective operation is in progress (code ";
-                    std::cerr << remote_coll->type << ")" << std::cerr;
-                    return;
-                }
-#endif
-                
-                /* Is the remote guy ready? */
-
-                named_mtx.lock(); 
-                if( false == remote_coll->inProgress ) {
-                    remote_coll->type = _SHMEM_COLL_BCAST;
-                    remote_coll->cnt = 0;
-                    remote_coll->inProgress = true;
-#if defined( _SAFE ) || defined( _DEBUG )
-                    remote_coll->space =  nbElem * sizeof( T );
-#endif
-                    
-                }
-                named_mtx.unlock(); 
-
-                shmem_int_finc( &(myInfo.getCollective()->cnt), remoteRank );
-                shmem_template_put( target, source, nbElem, remoteRank );
-#ifdef _DEBUG
-                std::cout << myInfo.getRank() << "] put buff into " << remoteRank << " ; " << nbElem << " elements" << std::endl;
-#endif
-
-            }
+        while( myInfo.getCollective()->cnt != (PE_size - 1) ) {
+            usleep( SPIN_TIMER );
         }
 
     } else {
-        named_mtx.lock(); 
-        if( false == coll->inProgress ) {
-            coll->cnt = 0;
-            coll->inProgress = true;
-#if defined( _SAFE ) || defined( _DEBUG )
-            coll->space =  nbElem * sizeof( T );
-#endif
-        }
-        named_mtx.unlock(); 
 
-        while( myInfo.getCollective()->cnt != 1 ) {
+        /* Am I part of the subset of participating processes ? */
+
+        if(  _shmem_unlikely( _shmem_part_of_coll( myrank, PE_start, PE_size, logPE_stride ) )) {
+            return;
+        }
+
+        /* Is the root process ready yet? */
+
+        _shmem_wait_until_entered( PE_root );
+
+        /* Get data from the root */
+
+        shmem_template_get( target, source, nelems, PE_root );
+        shmem_int_finc( &(coll->cnt), PE_root );
+        
+    }
+
+    coll->inProgress = true;
+    coll->cnt = 0;
+
+}
+
+template <class T,class V>void shmem_broadcast_template_binomial_get_blocking( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync ){
+
+    /* TODO : mettre des locks */
+
+    int myrank = myInfo.getRank();
+    int size = myInfo.getSize();
+    bool rc;
+
+    /* Am I part of the subset of participating processes ? */
+    
+    if(  _shmem_unlikely( _shmem_part_of_coll( myrank, PE_start, PE_size, logPE_stride ) )) {
+        return;
+    }
+
+    Collective_t* coll = myInfo.getCollective();
+    myInfo.getCollective()->cnt = -1;
+    myInfo.getCollective()->inProgress = true;
+
+    /* Am I the root process? */
+
+    if( _shmem_unlikely( myrank == PE_root ) ) {
+        _shmem_memcpy( target, source, nelems*sizeof( T ) );
+        myInfo.getCollective()->cnt = 0;
+
+    } else {
+
+        int myfather = _shmem_binomial_myfather( PE_root, PE_start, logPE_stride, PE_size );
+        int translated_rank = ( myrank - PE_start ) / ( 0x1 << logPE_stride );
+        int nb_of_children = _shmem_binomial_children( translated_rank, PE_size );
+
+        /* Is my father ready to be accessed yet? */
+    
+        _shmem_wait_until_entered( myfather );
+
+        /* Get data from my father */
+
+        shmem_template_get( target, source, nelems, myfather );
+        shmem_int_finc( &(coll->cnt), myfather );
+        
+        /* Wait until all my children have fetched data from me */
+
+        while( myInfo.getCollective()->cnt != nb_of_children ) {
             usleep( SPIN_TIMER );
         }
-#ifdef _DEBUG
-        std::cout << myInfo.getRank() << "] recv Bcast buff" <<  std::endl;
-#endif
 
     }
 
-    myInfo.collectiveReset();
+    myInfo.getCollective()->inProgress = false;
+
+}
+
+template <class T,class V>void shmem_broadcast_template_binomial_put_blocking( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync ){
+
+    /* TODO : mettre des locks */
+
+    int myrank = myInfo.getRank();
+    int size = myInfo.getSize();
+    bool rc;
+    int child;
+
+    /* Am I part of the subset of participating processes ? */
+    
+    if(  _shmem_unlikely( _shmem_part_of_coll( myrank, PE_start, PE_size, logPE_stride ) )) {
+        return;
+    }
+
+    Collective_t* coll = myInfo.getCollective();
+    myInfo.getCollective()->cnt = 0;
+    myInfo.getCollective()->inProgress = true;
+
+    /* Am I the root process? */
+
+    if( _shmem_unlikely( myrank == PE_root ) ) {
+        _shmem_memcpy( target, source, nelems*sizeof( T ) );
+        myInfo.getCollective()->cnt ++;
+    } 
+
+    /* Wait until the data is available in my local target buffer */
+
+    while( myInfo.getCollective()->cnt != 1 ) {
+        usleep( SPIN_TIMER );
+    }
+
+    /* Compute my children's ranks */
+
+    int translated_rank = ( myrank - PE_start ) / ( 0x1 << logPE_stride );
+    int nb_of_children = _shmem_binomial_children( translated_rank, PE_size );
+    int mychild;
+
+    int offset = _shmem_binomial_binbase_size( translated_rank );
+    for( child = 0 ; child < nb_of_children ; child++ ) {
+        mychild = translated_rank | ( 0x1 << ( offset++ ) ) ;
+        mychild = mychild * 0x1 << logPE_stride + PE_start;
+
+        /* Put the data and increment their local counter */
+        shmem_template_put( target, source, nelems, mychild );
+        shmem_int_finc( &(coll->cnt), mychild );
+
+    }
+
+    myInfo.getCollective()->inProgress = false;
+    myInfo.getCollective()->cnt = 0;
+
 }

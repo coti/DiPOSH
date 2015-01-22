@@ -1,25 +1,3 @@
-/*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
- *                    All rights reserved.
- *
- * This file is part of POSH.
- * 
- * POSH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * POSH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
-
 #include "shmem_internal.h"
 
 #include "shmem_collectives.h"
@@ -110,4 +88,66 @@ void shmem_int_allgather_flat( int* buffer, const int* myelem, size_t nb ) {
 void shmem_int_gather_flat( int* buffer, const int* myelem, size_t nb, int root ) {
     shmem_template_gather_flat( buffer, myelem, nb, root );
 }
+
+bool _shmem_is_remote_process_in_coll( int rank ) {
+    return shmem_template_g( &(myInfo.getCollective()->inProgress), rank );
+}
+
+void _shmem_wait_until_entered( int rank ) {
+
+    while( false == _shmem_is_remote_process_in_coll( rank ) ){
+        usleep( SPIN_TIMER );
+    }
+}
+
+bool _shmem_part_of_coll( int rank, int PE_start, int PE_size, int logPE_stride ) {
+    return ( ( rank < PE_start ) ||
+             ( rank > ( PE_start + ( PE_size * ( 0x1 << logPE_stride) ) ) ) ||
+             ( ( rank - PE_start ) % ( 0x1 << logPE_stride ) ) != 0 );
+}
+
+/* Returns the length of the prefix
+ * e.g., if nb = 0x001101, returns 4
+ */
+
+int _shmem_binomial_binbase_size( int nb ) {
+    int len;
+    int b = 0x1;
+
+    len = 0;
+    while( b <= nb ) {
+        b = b << 1;
+        len++;
+    }
+    return len;
+}
+
+/* Father's rank
+ * My own rank minus the heaviest bit.
+ */
+
+int _shmem_binomial_myfather( int PE_root, int PE_start, int logPE_stride, int PE_size ) {
+    int rank = myInfo.getRank();
+    rank -= PE_start;
+    int log = _shmem_binomial_binbase_size( rank );
+    int b = 0x1 << (log-1);
+    int father = rank ^ b;
+    father = rank - ( ( rank - father ) * 0x1 << logPE_stride );
+    return father;
+}
+
+/* Number of children
+ */
+
+int _shmem_binomial_children( int rank, int size ) {
+    int log_rank = _shmem_binomial_binbase_size( rank );
+
+    int n = 0;
+    int child = rank;
+    while( child < size ) {
+        child = rank | ( 0x1 << ( log_rank + n++ ) ) ;
+    }
+    return n - 1;
+}
+
 

@@ -1,25 +1,3 @@
-/*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
- *                    All rights reserved.
- *
- * This file is part of POSH.
- * 
- * POSH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * POSH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
-
 #include "shmem_internal.h"
 
 /* Methods */
@@ -34,7 +12,10 @@ void SymmetricHeap::createSharedHeap( unsigned long long int size ) {
     if( NULL == this->heapName ) setHeapName();
     this->deleteSharedHeap(  );
     shared_memory_object::remove( this->heapName ); 
-    this->myHeap = managed_shared_memory ( /* open_or_create */ create_only, this->heapName, this->heapSize );
+    /*    boost::interprocess::permissions perm( );
+    perm.set_unrestricted( ); */
+    this->myHeap = managed_shared_memory ( /* open_or_create */ create_only, this->heapName, this->heapSize /*, &perm*/ );
+
 
 #ifdef _DEBUG
     int* buf = (int*) this->myHeap.get_address_from_handle( 0 );
