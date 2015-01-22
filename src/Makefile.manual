@@ -1,0 +1,159 @@
+#MODE=NODEBUG
+MODE=DEBUG
+
+CC=g++
+LD=g++
+
+TOOLS=/usr/local
+
+MYCFLAGS = -Wall  -I$(TOOLS)/include  -Wno-unused-variable -Wno-deprecated-declarations -fPIC -D_GNU_SOURCE -std=gnu++11 -Wno-unused-function #-fno-builtin 
+MYLDFLAGS = -Wall #-fno-builtin
+ifeq ($(MODE),DEBUG)
+  CFLAGS=-O0 -g -D_DEBUG $(MYCFLAGS)
+  LDFLAGS=-g -Wall -O0 $(MYLDFLAGS)
+else
+  CFLAGS= -O3 $(MYCFLAGS)
+  LDFLAGS= -O3 $(MYLDFLAGS)
+endif
+
+ifeq ($(MODE),DEBUG)
+  SHCCFLAGS=-g -O0
+else
+  SHCCFLAGS=-g -O3
+endif
+
+COLLTYPE = SHMEM_COLL_FLAT #  SHMEM_COLL_BINARY #
+MEMCPYTYPE =  _USE_MEMCPY_  # _USE_SSE_MEMCPY_ #
+
+CFLAGS += -D$(COLLTYPE) -D$(MEMCPYTYPE) #-D_USE_BLOCK_MEMCPY
+
+## Possible flags:
+# _DEBUG : debug mode
+# _SAFE : safe mode (activates run-time checks)
+# NB: _DEBUG activates most of the features enabled by the _SAFE flag
+# MULTITHREADED_SPAWN
+
+#LIBS=-L/opt/local/lib -lboost_thread-mt
+LIBS=-L/usr/local/lib -L$(TOOLS)/lib -lboost_thread -lboost_system -lpthread
+
+#SOURCES_LIB = shmem_init.cpp shmem_accessible.cpp shmem_alloc.cpp shmem_MeMyselfAndI_implem.cpp shmem_SymmetricHeap_Implem.cpp shmem_ptr.cpp shmem_put.cpp shmem_get.cpp shmem_atomic.cpp shmem_sync.cpp shmem_barrier.cpp shmem_lock.cpp shmem_collectives.cpp shmem_bcast.cpp
+
+SOURCES_LIB =   shmem_accessible.cpp   shmem_lock.cpp 			\
+		shmem_alloc.cpp        shmem_MeMyselfAndI_implem.cpp    \
+		shmem_atomic.cpp       shmem_collect.cpp		\
+		shmem_barrier.cpp      shmem_ptr.cpp			\
+		shmem_bcast.cpp        shmem_put.cpp			\
+		shmem_collectives.cpp  shmem_SymmetricHeap_Implem.cpp	\
+		shmem_get.cpp          shmem_sync.cpp			\
+		shmem_init.cpp         shmem_reduce.cpp			\
+		shmem_utils.cpp
+
+
+TEMPLATE_FILES = shmem_atomic.tpp  shmem_collectives.tpp     \
+                 shmem_put.tpp     shmem_sync.tpp            \
+                 shmem_bcast.tpp   shmem_get.tpp             \
+                 shmem_reduce.tpp  shmem_collect.tpp
+
+TEMPLATE_HEADERS = $(TEMPLATE_FILES:.tpp=.h)
+
+HEADERS_LIB = shmem.h shmem_constants.h shmem_internal.h shmem_processinfo.h shmem_utils.h $(TEMPLATE_FILES) $(TEMPLATE_HEADERS)
+OBJECTS_LIB = $(SOURCES_LIB:.cpp=.o)
+
+SOURCES_EXEC = spawn.cpp shmem_portability.cpp
+HEADERS_EXEC = shmem_constants.h shmem_portability.h
+OBJECTS_EXEC = $(SOURCES_EXEC:.cpp=.o)
+
+PARSER = shmem_s2sc
+
+LIBSHMEM = libshmem.so
+EXEC = spawn
+COMPILER = shmemcc
+
+TESTDIR  = ./prog
+TESTPROG = test_shmem
+#TESTPROG = test_barrier
+BENCHPROG = bench_putget
+
+all: $(LIBSHMEM) $(EXEC) $(PARSER)
+
+checks: helloWorld put put2 get get2
+
+
+# POSH RTE
+
+$(EXEC): $(OBJECTS_EXEC) $(PARSER) $(HEADERS_EXEC)
+	$(LD) $(LDFLAGS) -o $@ $(OBJECTS_EXEC) $(LIBS)
+
+# lib shmem
+
+$(LIBSHMEM): $(OBJECTS_LIB) $(HEADERS_LIB) $(TEMPLATE_FILES) $(TEMPLATE_HEADERS)
+	$(LD) $(LDFLAGS) -shared -o $@ $(OBJECTS_LIB) $(LIBS) 
+
+.cpp.o:
+	$(CC) $(CFLAGS) -c $<
+
+# source-to-source compiler
+
+$(PARSER): $(PARSER).o 
+	gcc $(FLAGS) -o $(PARSER) $(PARSER).o -lfl
+
+$(PARSER).o: $(PARSER).c
+	gcc $(FLAGS) -c $(PARSER).c
+
+$(PARSER).c: $(PARSER).flex
+	flex -o $(PARSER).c $(PARSER).flex 
+
+# actions
+
+clean:
+	@rm -f $(EXEC) $(LIBSHMEM) $(OBJECTS_LIB) $(OBJECTS_EXEC) $(TESTDIR)/$(TESTPROG) $(TESTDIR)/$(BENCHPROG) $(PARSER) $(PARSER).c $(PARSER).o
+	@find . -name '*.dSYM' -exec @rm -Rf {} \;
+	rm examples/helloWorld examples/put
+
+
+test: $(EXEC) $(LIBSHMEM) $(TESTDIR)/$(TESTPROG).c
+	./shmemcc $(SHCCFLAGS) -o $(TESTDIR)/$(TESTPROG) $(TESTDIR)/$(TESTPROG).c
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:. ; ./$(EXEC) -n 4 $(TESTDIR)/$(TESTPROG) 
+
+bench: $(EXEC) $(LIBSHMEM)  $(TESTDIR)/$(BENCHPROG).c
+	./$(COMPILER) $(SHCCFLAGS) -o $(TESTDIR)/$(BENCHPROG) $(TESTDIR)/$(BENCHPROG).c -lrt -lm
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:. ; ./$(EXEC) -n 2 $(TESTDIR)/$(BENCHPROG) 20 33554432
+
+benchpapi: $(EXEC) $(LIBSHMEM)  $(TESTDIR)/$(BENCHPROG).c
+	./$(COMPILER) $(SHCCFLAGS) -o $(TESTDIR)/$(BENCHPROG) $(TESTDIR)/$(BENCHPROG).c -DWITHPAPI -lpapi
+	./$(EXEC) -n 2 $(TESTDIR)/$(BENCHPROG) 20 33554432
+
+stats:
+	wc -l $(SOURCES_LIB)  $(HEADERS_LIB) $(SOURCES_EXEC)  $(HEADERS_EXEC) $(TESTDIR)/$(TESTPROG).c Makefile $(PARSER).flex $(COMPILER) | tail -n 1
+	grep shmem_ shmem.h | grep -v include | grep -v pdf | wc -l
+
+valgrind: $(EXEC) $(LIBSHMEM) $(TESTDIR)/$(TESTPROG).c
+	./shmemcc $(SHCCFLAGS) -o $(TESTDIR)/$(TESTPROG) $(TESTDIR)/$(TESTPROG).c
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ; valgrind --log-file=/tmp/father.%p --trace-children=yes ./$(EXEC) -n 4 /usr/bin/valgrind --log-file=/tmp/child.%p $(TESTDIR)/$(TESTPROG) 
+
+
+NP=4
+
+helloWorld: examples/helloWorld.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/helloWorld examples/helloWorld.c 
+	./$(EXEC) -n $(NP) examples/helloWorld
+
+
+put: examples/put.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/put examples/put.c 
+	./$(EXEC) -n $(NP) examples/put
+
+put2: examples/put2.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/put2 examples/put2.c 
+	./$(EXEC) -n $(NP) examples/put2
+
+get: examples/get.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/get examples/get.c 
+	./$(EXEC) -n $(NP) examples/get
+
+
+get2: examples/get2.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/get2 examples/get2.c 
+	./$(EXEC) -n $(NP) examples/get2
+
+
