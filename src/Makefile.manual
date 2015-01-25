@@ -35,7 +35,7 @@ CFLAGS += -D$(COLLTYPE) -D$(MEMCPYTYPE) #-D_USE_BLOCK_MEMCPY
 # MULTITHREADED_SPAWN
 
 #LIBS=-L/opt/local/lib -lboost_thread-mt
-LIBS=-L/usr/local/lib -L$(TOOLS)/lib -L$(OPENMX) -lboost_thread -lboost_system -lpthread -lopen_mx
+LIBS=-L/usr/local/lib -L$(TOOLS)/lib -L$(OPENMX)/lib -lboost_thread -lboost_system -lpthread -lopen-mx
 
 #SOURCES_LIB = shmem_init.cpp shmem_accessible.cpp shmem_alloc.cpp shmem_MeMyselfAndI_implem.cpp shmem_SymmetricHeap_Implem.cpp shmem_ptr.cpp shmem_put.cpp shmem_get.cpp shmem_atomic.cpp shmem_sync.cpp shmem_barrier.cpp shmem_lock.cpp shmem_collectives.cpp shmem_bcast.cpp
 

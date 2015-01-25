@@ -11,13 +11,23 @@ template<class T> T shmem_template_g( T* addr, int pe ){
 
 template<class T> void shmem_template_get( T* target, const T* source, size_t nb, int pe ){
 
-    if( /* le processus de rang pe est sur la même machine */ ) { /* -> mémoire partagée */
-        /* Open remote PE's symmetric heap */
-        const void* buf = const_cast<const void*>(_getRemoteAddr( reinterpret_cast<void*>( const_cast<T*>( source ) ), pe ) );
-        /* Pull the data here */
-        _shmem_memcpy( reinterpret_cast<void *>( target ), buf, nb * sizeof( T ) );
-    } else { /* -> mémoire distribuée */
-        ked_get( .... );
+    const void* buf = NULL;
+
+    switch( myInfo.getRemoteCommType( pe )) {
+
+        case SHARED_MEMORY_COMM : /* -> mémoire partagée */
+            /* Open remote PE's symmetric heap */
+            buf = const_cast<const void*>(_getRemoteAddr( reinterpret_cast<void*>( const_cast<T*>( source ) ), pe ) );
+            /* Pull the data here */
+            _shmem_memcpy( reinterpret_cast<void *>( target ), buf, nb * sizeof( T ) );
+            break;
+
+        case OPEN_MX_COMM:  /* -> mémoire distribuée */
+        //   ked_get( .... );
+            break;
+
+        default:
+        std::cerr << "Unknown communication type " << myInfo.getRemoteCommType( pe ) << std::endl;
     }
     
 }

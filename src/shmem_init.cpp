@@ -34,6 +34,8 @@ std::vector<Process> processes;
 
 void start_pes( int npes ) {
 
+    char* taktukrank;
+
     /* Loop here in debug mode to be able to attach a debugger */
 
     if( NULL != getenv( VAR_RUN_DEBUG ) ) {

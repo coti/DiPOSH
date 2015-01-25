@@ -15,28 +15,24 @@ template<class T> void shmem_template_p( T* addr, T value, int pe ){
 template<class T> void shmem_template_put( T* addr, const T* value, size_t nb, int pe ){
     /* TODO: this is atomic. OpenSHMEM's specs say that it can be non-blocking 
        in order to be able to be overlapped by something else */
+    T* buf = NULL;
+    switch( myInfo.getRemoteCommType( pe ) ) {
 
-    /* Open remote PE's symmetric heap */
+        case SHARED_MEMORY_COMM : /* -> mémoire partagée */
+            /* Open remote PE's symmetric heap */
+            buf = (T*) _getRemoteAddr( addr, pe );
+            /* Put our data over there */
+            _shmem_memcpy( reinterpret_cast<void *>( buf ), reinterpret_cast<const void *>( value ), nb*sizeof( T ) );
+            break;
 
-    T* buf = (T*) _getRemoteAddr( addr, pe );
+        case OPEN_MX_COMM:  /* -> mémoire distribuée */
+        //   ked_put( .... );
+            break;
 
-    /* #ifdef _DEBUG
-    std::cout << myInfo.getRank() << " put " << (T)*value << " into " << buf << std::endl;
-    #endif */
+        default:
+            std::cerr << "Unknown communication type " << myInfo.getRemoteCommType( pe )  <<std::endl;
+    }
     
-    /* Put our data over there */
-
-    _shmem_memcpy( reinterpret_cast<void *>( buf ), reinterpret_cast<const void *>( value ), nb*sizeof( T ) );
-
-    /* #ifdef _DEBUG */
-    /* What did I just put over there? DEBUG */
-
-    /* T* buf2 = (T*)malloc( sizeof( T ) ); ;
-
-    shmem_template_get( buf2, addr, nb, pe );
-    std::cout << "--> " << myInfo.getRank() << " put " << *buf2 << " on " << pe << std::endl;
-#endif */
-
 }
 
 

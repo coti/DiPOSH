@@ -370,7 +370,7 @@ int main( int argc, char** argv ) {
 
     taktukrank = getenv( "TAKTUK_RANK" );
     if( NULL != taktukrank ){
-        std::cout << "I am disctributed process %d in %s\n", atoi( taktukrank ), getenv( "TAKTUK_COUNT" );
+        std::cout << "I am distributed process " << taktukrank << " in " << getenv( "TAKTUK_COUNT" ) << std::endl;
         nthreads = 1;
     } else {
         nthreads = np;
