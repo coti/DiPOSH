@@ -332,10 +332,11 @@ int spawnPE( int id, int nbPE, bool debug_mode, char** arg ){
 
 int main( int argc, char** argv ) {
 
-    int np, i, k;
+    int np, i, k, nthreads; // np = total nb of processes, nthreads = number on this machine
     bool debug, trace;
     char* env_var;
     char* value;
+    char* taktukrank;
 
     /* initialize default values */
 
@@ -365,12 +366,22 @@ int main( int argc, char** argv ) {
         k++;
     }
 
+    /* Have I been deployed by a TakTuk job? */
+
+    taktukrank = getenv( "TAKTUK_RANK" );
+    if( NULL != taktukrank ){
+        std::cout << "I am disctributed process %d in %s\n", atoi( taktukrank ), getenv( "TAKTUK_COUNT" );
+        nthreads = 1;
+    } else {
+        nthreads = np;
+    }
+
 #ifdef _DEBUG
     std::cout << "I will spawn ";
     for( i = k ; i < argc ; i++ ) {
         std::cout << argv[i] << " " ;
     }
-    std::cout << " on " << np << " threads"  << std::endl;
+    std::cout << " on " << nthreads << " threads"  << std::endl;
 #endif
 
     /* Get some environment variables */
@@ -425,7 +436,7 @@ int main( int argc, char** argv ) {
     process0.create_thread( boost::bind( &spawnPE, 0, np, debug, &argv[k] ));
     process0.join_all();
 #else    
-    spawnPE( 0, np, debug, &argv[k] );
+    spawnPE( 0, nthreads, debug, &argv[k] );
 #endif
 
 #if _DEBUG
@@ -441,7 +452,7 @@ int main( int argc, char** argv ) {
 #ifdef MULTITHREADED_SPAWN
     boost::thread_group workers;
 #endif
-    for( i = 1 ; i < np ; i++ ) {
+    for( i = 1 ; i < nthreads ; i++ ) {
 #ifdef MULTITHREADED_SPAWN
         workers.create_thread( boost::bind( &spawnPE, i, np, debug, &argv[k] ));
 #else
@@ -465,7 +476,7 @@ int main( int argc, char** argv ) {
 #endif
 
     /* Wait for everybody to complete */
-    for( i = 0 ; i < np ; i++ ) {
+    for( i = 0 ; i < nthreads ; i++ ) {
         pid_t mypid;
         int exitStat;
         siginfo_t infop;

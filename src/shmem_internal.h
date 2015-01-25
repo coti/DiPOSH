@@ -11,6 +11,8 @@
 #include "shmem_processinfo.h"
 #include "shmem_utils.h"
 
+#include <open-mx.h>
+
 using namespace boost::interprocess;
 
 
@@ -29,6 +31,31 @@ typedef struct Collective_t {
 
 } Collective_t;
 
+typedef enum { NO_COMM, SHARED_MEMORY_COMM, OPEN_MX_COMM } communication_type_t;
+
+typedef struct openmx_endpoint_t {
+    omx_endpoint_addr_t addr;
+    uint64_t dest_addr;
+    bool connected;
+} openmx_endpoint_t;
+
+typedef union communication_info_t {
+    managed_shared_memory sm_segment; // if we communicate through shared memory
+    openmx_endpoint_t omx_endpoint;
+    communication_info_t(){};
+    ~communication_info_t(){};
+} communication_info_t;
+
+typedef struct RemoteProcess_t {
+    char hostname[128];
+    communication_type_t type; /* SM or Open-MX */
+    communication_info_t comm;
+public:
+    RemoteProcess_t(){
+        type = NO_COMM;
+    }
+    ~RemoteProcess_t(){}
+} RemoteProcess_t;
 
 class MeMyselfAndI {
 
@@ -39,8 +66,10 @@ class MeMyselfAndI {
 
     Collective_t* collective;
 
-    managed_shared_memory* neighbors;
+    RemoteProcess_t* neighbors;
     std::map<long, boost::interprocess::named_mutex*> locks;
+
+    omx_endpoint_t omx_ep;
 
    public:
     
@@ -55,7 +84,8 @@ class MeMyselfAndI {
         this->collective = NULL;
     }
     ~MeMyselfAndI(){
-        delete[] neighbors;
+        //   delete[] neighbors;
+        free( neighbors );
     }
  
  public:
@@ -69,8 +99,8 @@ class MeMyselfAndI {
     bool getStarted( void );
     void setStarted( bool );
     Collective_t* getCollective( void );
-    managed_shared_memory* getNeighbors( void );
-    managed_shared_memory* getNeighbor( int );
+    RemoteProcess_t* getNeighbors( void );
+    RemoteProcess_t* getNeighbor( int );
     boost::interprocess::named_mutex* getLock( long );
     void setLock( long, boost::interprocess::named_mutex* );
 
@@ -90,8 +120,15 @@ class MeMyselfAndI {
 
     void allocNeighbors( int nb );
     void initNeighbors( int nb );
+    void initSharedMemNeighbor( int );
+    void initOpenMxNeighbor( int );
+    void initNeighbor( int );
     void* getRemoteHeapBaseAddr( int );
     void* getRemoteHeapLocalBaseAddr( int );
+
+    void initOpenMX( void );
+    communication_type_t getRemoteCommType( int );
+
 
 };
 
@@ -175,12 +212,16 @@ bool _sharedMemEsists( char* );
 
 inline void* _getRemoteAddr( const void* addr, int pe ) {
 
-    managed_shared_memory* remote;
-    remote = myInfo.getNeighbor( pe );
-    
-    managed_shared_memory::handle_t myHandle = myHeap.myHeap.get_handle_from_address( addr );
-    return remote->get_address_from_handle( myHandle );
+    if( SHARED_MEMORY_COMM == myInfo.getRemoteCommType( pe ) ) {
+        
+        managed_shared_memory* remote;
+        remote = &( myInfo.getNeighbor( pe )->comm.sm_segment );
+        
+        managed_shared_memory::handle_t myHandle = myHeap.myHeap.get_handle_from_address( addr );
+        return remote->get_address_from_handle( myHandle );
+    } else {
+        return const_cast<void*>( addr );
+    }
 }
-
 
 #endif

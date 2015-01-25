@@ -54,6 +54,14 @@ void start_pes( int npes ) {
     myInfo.findAndSetMySize();
     myInfo.findAndSetPidRoot();
 
+    /* Am I using Open-MX ? */
+
+    taktukrank = getenv( "TAKTUK_RANK" );
+    if( NULL != taktukrank ){ /* yes: initialize it */
+        myInfo.initOpenMX();
+    }
+    free( taktukrank );
+
     /* Set up the symmetric heap of this process element */
 
     myHeap.setupSymmetricHeap();    

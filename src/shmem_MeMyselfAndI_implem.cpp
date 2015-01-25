@@ -1,4 +1,5 @@
 #include "shmem_internal.h"
+#include <fstream>
 
 /* Accessors */
 
@@ -26,11 +27,11 @@ void MeMyselfAndI::setStarted( bool _started ){
     this->shmem_started = _started;
 }
 
-managed_shared_memory* MeMyselfAndI::getNeighbors() {
+RemoteProcess_t* MeMyselfAndI::getNeighbors() {
     return this->neighbors;
 }
 
-managed_shared_memory* MeMyselfAndI::getNeighbor( int rank ) {
+RemoteProcess_t* MeMyselfAndI::getNeighbor( int rank ) {
     return &(this->neighbors[rank]);
 }
 
@@ -48,6 +49,12 @@ boost::interprocess::named_mutex* MeMyselfAndI::getLock( long _lock ){
 }
 void MeMyselfAndI::setLock( long _lock, boost::interprocess::named_mutex *_mtx ){
     this->locks[ _lock ] = _mtx;
+}
+
+/* how do I communicate with this guy? */
+
+communication_type_t MeMyselfAndI::getRemoteCommType( int pe ) {
+    return this->getNeighbor( pe )->type;
 }
 
 /* Methods */
@@ -109,44 +116,129 @@ void MeMyselfAndI::setRootPid( int pid ) {
 
 
 void MeMyselfAndI::allocNeighbors( int nb ) {
-    this->neighbors = new managed_shared_memory[nb];
+    this->neighbors = ( RemoteProcess_t*) malloc( nb * sizeof( RemoteProcess_t ) );
+//new managed_shared_memory[nb];
+}
+
+void MeMyselfAndI::initSharedMemNeighbor( int pe ) {
+    char* _name; 
+    _name = myHeap.buildHeapName( pe );
+    while( false == _sharedMemEsists( _name ) ) {
+        usleep( SPIN_TIMER );
+    }
+    managed_shared_memory remoteHeap(  open_only, _name );
+    this->neighbors[pe].comm.sm_segment = std::move( remoteHeap );
+    
+    //        this->neighbors[i]( open_only, _name );
+    free( _name );
+}
+
+void MeMyselfAndI::initOpenMxNeighbor( int pe ) {
+    omx_return_t ret;
+
+    this->neighbors[pe].comm.omx_endpoint.connected = false;
+
+    ret = omx_hostname_to_nic_id( this->neighbors[pe].hostname, &(this->neighbors[pe].comm.omx_endpoint.dest_addr) );
+    if (ret != OMX_SUCCESS) {
+      fprintf(stderr, "Cannot find peer name %s\n", this->neighbors[pe].hostname);
+      goto out;
+    }
+
+    return;
+
+ out:
+    this->neighbors[pe].type = NO_COMM;
+}
+
+void MeMyselfAndI::initNeighbor( int pe ) {
+    switch( this->neighbors[pe].type ) {
+    case SHARED_MEMORY_COMM:
+        this->initSharedMemNeighbor( pe );
+        break;
+    case OPEN_MX_COMM:
+        this->initOpenMxNeighbor( pe );
+        break;
+    default:
+        std::cerr << "Unknown communication type " << this->neighbors[pe].type <<std::endl;
+    }
+
 }
 
 void MeMyselfAndI::initNeighbors( int nb ) {
-    /* Lecture du machinefile */
 
-    /* Obtention des id Open-MX */
+    int len = 128;
+    char* machinefile;
+    char* taktukrank;
+    bool use_openmx;
+    int i;
 
-    /* Pour chaque ligne du machinefile : 
-       si le processus est sur la même machine (donc même hostname)
-       on communique avec lui en mémoire partagée 
-       (donc infra déjà existante)
-       sinon on communique en utilisant Open-MX
-    */
+    /* Am I using Open-MX ? */
 
-    if( /* voisin sur mémoire partagée */ ) {
-        char* _name; /* cas mémoire partagée */
-        for( int i = 0 ; i < nb ; i++ ) {
-            _name = myHeap.buildHeapName( i );
-            while( false == _sharedMemEsists( _name ) ) {
-                usleep( SPIN_TIMER );
-            }
-            managed_shared_memory remoteHeap(  open_only, _name );
-            this->neighbors[i] = std::move( remoteHeap );
-            
-        //        this->neighbors[i]( open_only, _name );
-            free( _name );
-        }
-    } else { /* cas Open-MX */
-        /* cas mémoire distribuée */
-        
+    taktukrank = getenv( "TAKTUK_RANK" );
+    if( NULL != taktukrank ){ /* yes: initialize it */
+        use_openmx = true;
+    } else {
+        use_openmx = false;
     }
+    free( taktukrank );
+
+    if( use_openmx ) {
+
+        char myhostname[len];
+
+        gethostname( myhostname, len );
+
+       /* Read the machinefile */
+
+        machinefile = getenv( "POSH_MACHINEFILE" );
+
+        std::ifstream in( machinefile );
+        char str[len];
+        i = 0;
+        while( in && i < nb ) {
+            in.getline( str, len );
+            if( in ){ 
+                std::memcpy( this->neighbors[i].hostname, str, sizeof( str ) );
+#ifdef _DEBUG
+                std::cout << "Process " << i << " will be running on " << str << std::endl;
+#endif
+                i++;
+            }
+        }
+        
+        in.close();
+
+        /* Who is running on the same machine as me? */
+
+        for( i = 0 ; i < nb ; i++ ) {
+            if( 0 == strncmp( "localhost", this->neighbors[i].hostname, strlen( "localhost" ) )
+                || 0 == strncmp( myhostname, this->neighbors[i].hostname, std::min( strlen( myhostname), strlen( this->neighbors[i].hostname ) ) ) ) {
+                this->neighbors[i].type = SHARED_MEMORY_COMM;
+            } else {
+                this->neighbors[i].type = OPEN_MX_COMM;
+            }
+        }
+
+    } else {
+        /* Everyone is local */
+        for( i = 0 ; i < nb ; i++ ) {
+            std::memcpy( this->neighbors[i].hostname, "localhost", sizeof( "localhost" ) );
+            this->neighbors[i].type = SHARED_MEMORY_COMM;
+        }
+    }
+
+    /* Initialize everyone */
+
+    for( i = 0 ; i < nb ; i++ ) {
+        this->initNeighbor( i );
+    }
+
 }
 
 /* How I see the remote guy's base address */
 
 void* MeMyselfAndI::getRemoteHeapLocalBaseAddr( int rank ) {
-    managed_shared_memory* myNeighbor = this->getNeighbor( rank );
+    managed_shared_memory* myNeighbor = &(this->getNeighbor( rank )->comm.sm_segment);
     managed_shared_memory::handle_t handle = myHeap.getOffsetHandle();
     return myNeighbor->get_address_from_handle( handle );
 }
@@ -156,4 +248,43 @@ void* MeMyselfAndI::getRemoteHeapLocalBaseAddr( int rank ) {
 void* MeMyselfAndI::getRemoteHeapBaseAddr( int rank ) {
     uintptr_t* ptr = (uintptr_t*)this->getRemoteHeapLocalBaseAddr( rank );
     return (void*)(*ptr);
+}
+
+/* Initialize Open-MX */
+
+void MeMyselfAndI::initOpenMX( ) {
+
+    char my_hostname[OMX_HOSTNAMELEN_MAX];
+    char my_ifacename[OMX_BOARD_ADDR_STRLEN];
+    omx_return_t ret;
+    unsigned eid = OMX_ANY_ENDPOINT;
+    unsigned bid = 0;
+
+    ret = omx_init();
+    if (ret != OMX_SUCCESS) {
+        fprintf(stderr, "Failed to initialize (%s)\n", omx_strerror(ret) );
+        return;
+    }
+
+    ret = omx_open_endpoint( bid, eid, 0x12345678, NULL, 0, &( this -> omx_ep ) );
+    if (ret != OMX_SUCCESS) {
+        fprintf(stderr, "Failed to open endpoint (%s)\n", omx_strerror(ret));
+        return;
+    }
+    
+#ifdef _DEBUG
+    ret = omx_get_info( this -> omx_ep, OMX_INFO_BOARD_HOSTNAME, NULL, 0, my_hostname, sizeof(my_hostname));
+    if (ret != OMX_SUCCESS) {
+        fprintf(stderr, "Failed to get endpoint hostname (%s)\n", omx_strerror(ret));
+        return;
+    }
+    
+    ret = omx_get_info( this -> omx_ep, OMX_INFO_BOARD_IFACENAME, NULL, 0,  my_ifacename, sizeof(my_ifacename));
+    if (ret != OMX_SUCCESS) {
+        fprintf(stderr, "Failed to get endpoint iface name (%s)\n", omx_strerror(ret));
+        return;
+    }
+    
+    printf("Successfully open any endpoint for hostname '%s' iface '%s'\n",  my_hostname, my_ifacename);
+#endif
 }
