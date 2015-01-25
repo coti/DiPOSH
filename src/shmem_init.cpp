@@ -62,10 +62,9 @@ void start_pes( int npes ) {
     if( NULL != taktukrank ){ /* yes: initialize it */
         myInfo.initOpenMX();
     }
-    free( taktukrank );
+    //    free( taktukrank );
 
     /* Set up the symmetric heap of this process element */
-
     myHeap.setupSymmetricHeap();    
     myInfo.collectiveInit();
     myInfo.allocNeighbors( myInfo.getSize() );

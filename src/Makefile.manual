@@ -113,7 +113,7 @@ clean:
 
 
 test: $(EXEC) $(LIBSHMEM) $(TESTDIR)/$(TESTPROG).c
-	./shmemcc $(SHCCFLAGS) -o $(TESTDIR)/$(TESTPROG) $(TESTDIR)/$(TESTPROG).c
+	./shmemcc $(SHCCFLAGS) -L$(OPENMX)/lib -o $(TESTDIR)/$(TESTPROG) $(TESTDIR)/$(TESTPROG).c -lopen-mx
 	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:. ; ./$(EXEC) -n 4 $(TESTDIR)/$(TESTPROG) 
 
 bench: $(EXEC) $(LIBSHMEM)  $(TESTDIR)/$(BENCHPROG).c

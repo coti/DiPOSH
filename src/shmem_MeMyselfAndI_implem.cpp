@@ -64,10 +64,13 @@ void MeMyselfAndI::findAndSetMyRank( ){
         return;
     } else {
         char* myNum;
-        myNum = getenv( VAR_PE_NUM );
+        myNum = getenv( "TAKTUK_RANK" );
         if( NULL == myNum ) {
-            std::cerr << "Could not retrieve my PE number" << std::endl;
-            return;
+            myNum = getenv( VAR_PE_NUM );
+            if( NULL == myNum ) {
+                std::cerr << "Could not retrieve my PE number" << std::endl;
+                return;
+            }
         }
         this->setRank( atoi( myNum ) );
     }
@@ -122,6 +125,11 @@ void MeMyselfAndI::allocNeighbors( int nb ) {
 
 void MeMyselfAndI::initSharedMemNeighbor( int pe ) {
     char* _name; 
+
+    if( pe == this->shmem_rank ) return;
+
+    std::cout << "Process " << pe << " : shared memory communication" << std::endl;
+
     _name = myHeap.buildHeapName( pe );
     while( false == _sharedMemEsists( _name ) ) {
         usleep( SPIN_TIMER );
@@ -135,6 +143,7 @@ void MeMyselfAndI::initSharedMemNeighbor( int pe ) {
 
 void MeMyselfAndI::initOpenMxNeighbor( int pe ) {
     omx_return_t ret;
+    std::cout << "Process " << pe << " : Open MX communication" << std::endl;
 
     this->neighbors[pe].comm.omx_endpoint.connected = false;
 
@@ -180,7 +189,7 @@ void MeMyselfAndI::initNeighbors( int nb ) {
     } else {
         use_openmx = false;
     }
-    free( taktukrank );
+    //    free( taktukrank );
 
     if( use_openmx ) {
 
@@ -191,6 +200,8 @@ void MeMyselfAndI::initNeighbors( int nb ) {
        /* Read the machinefile */
 
         machinefile = getenv( "POSH_MACHINEFILE" );
+
+        std::cout << "Opening machinefile " << machinefile << std::endl;
 
         std::ifstream in( machinefile );
         char str[len];
