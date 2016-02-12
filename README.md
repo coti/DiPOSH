@@ -1,6 +1,7 @@
 # POSH
 ### Paris OpenSHMEM http://lipn.univ-paris13.fr/~coti/POSH
 
+![logo](https://raw.github.com/coti/POSH/master/img/logo_paris_open_shmem.png)
 
 ## What is it?
 
