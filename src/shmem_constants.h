@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,7 +16,6 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #ifndef _SHMEM_CONSTANTS_H
@@ -73,13 +71,31 @@ extern char VAR_PID_ROOT[];
 
 /* internal constants */
 
+#ifndef _DEBUG
 #define SPIN_TIMER 100
+#else
+#define SPIN_TIMER 100000
+#endif
 
+/* Boost.interprocess cannot create segments of shared memory
+   smaller than a certain size. It throws a 
+   boost::interprocess_exception::library_error if we are asking for
+   something too small. */
+#define POSH_MIN_SHM_SIZE 512
 
 /* a definir :
 _SHMEM_REDUCE_MIN_WRKDATA_SIZE
 _SHMEM_REDUCE_SYNC_SIZE
 
  */
+
+/* This is necessary because DMTCP returns a virual pid */
+#ifdef CHANDYLAMPORT
+//#define _posh_getpid getpid
+#include <sys/types.h>
+inline __pid_t _posh_getpid( void );
+
+#endif
+
 
 #endif

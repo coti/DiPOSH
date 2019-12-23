@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,11 +16,14 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include <boost/bind.hpp>
 #include "shmem_internal.h"
+
+/* FIXME need the other implementations */
+
+#include "posh_heap.h"
 
 /**********************************************************************/
 /*       **************           SWAP          **************        */

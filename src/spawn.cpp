@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,7 +16,6 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include <iostream>
@@ -27,6 +25,7 @@
 #include <sys/wait.h>
 #include <stdio.h>
 #include <signal.h>
+#include <boost/program_options.hpp>
 
 #include "shmem_processinfo.h"
 #include "shmem_constants.h"
@@ -35,6 +34,18 @@
 #include <sys/resource.h>
 
 #include <cerrno>
+
+#ifdef MPILAUNCHER
+#include <boost/mpi/environment.hpp>
+#include <boost/mpi/communicator.hpp>
+namespace mpi = boost::mpi;
+#endif
+
+#ifdef CHANDYLAMPORT
+#include "posh_checkpointing.h"
+#endif
+
+namespace po = boost::program_options;
 
 extern char** environ;
 
@@ -98,7 +109,7 @@ void setHandler( ){
 	act.sa_flags = SA_SIGINFO;
  
 	if( sigaction( SIGCHLD, &act, NULL ) < 0 ) {
-		perror( "sigaction" );
+        std::perror( "sigaction" );
     }
 
 }
@@ -111,6 +122,11 @@ void error_arguments( char* name ) {
     std::cerr << "\t -n NPE : number of process elements " << std::endl;
     std::cerr << "\t -d     : debug mode " << std::endl;
     std::cerr << "\t -t     : print traces and stats " << std::endl;
+    std::cerr << "\t -f FPE : rank of the first process" << std::endl;
+    std::cerr << "\t -h HPE : number of PEs to spawn here" << std::endl;
+#ifdef CHECKPOINTING
+    std::cerr << "\t -r     : restarting from a checkpoint" << std::endl;
+#endif
     std::cerr << "Useful environment variables:" << std::endl;
     std::cerr << "\tSMA_SYMMETRIC_SIZE : size of the symmetric heap" << std::endl;
     std::cerr << "\tSMA_DEBUG          : enable debug mode (verbose, equivalent to -d)" << std::endl;
@@ -252,7 +268,16 @@ char** splitArgv( char* str, char sep ) {
     out[nb+1] = NULL;
 
     return out;
-} 
+}
+
+int getArgLen( char** arg ) {
+    int len;
+    len = 0;
+    while( arg[len] != NULL ) {
+        len++;
+    }
+    return len;
+}
 
 int spawnPE( int id, int nbPE, bool debug_mode, char** arg ){
 
@@ -261,11 +286,20 @@ int spawnPE( int id, int nbPE, bool debug_mode, char** arg ){
     int i;
     char** myEnv;
 
-#ifdef _DEBUG
-    std::cout << "Spawn " << arg[0] << " on thread " << id << " in " << nbPE << std::endl;
-#endif  
+#if 0 // def DISTRIBUTED_POSH
+    int size;
+    mpi::communicator world;
+    std::cout << "Process " << world.rank() << " ";
+#endif
 
-    /* Spawn the process */
+#ifdef _DEBUG
+    std::cout << "Spawn " << std::endl;
+    for( i = 0; arg[i] != NULL ; i++ ) 
+        std::cout << arg[i] << " " << std::endl;
+    std::cout << " on thread " << id << " in " << nbPE << std::endl;
+#endif
+
+   /* Spawn the process */
 
 
     /* Set useful environment variables */
@@ -293,9 +327,8 @@ int spawnPE( int id, int nbPE, bool debug_mode, char** arg ){
     }
     asprintf( &myEnv[i+1], "%s=%d", VAR_PID_ROOT, pid );
     myEnv[i+2] = NULL;
-   
 
-
+    
     /* TODO: using open would be nicer */
 
     /* if( 0 != pipe( fd ) ) {
@@ -305,7 +338,7 @@ int spawnPE( int id, int nbPE, bool debug_mode, char** arg ){
 
     switch( pid = fork() ) {
     case -1:
-        perror( "pSHMEM launch failed in fork: " );
+        perror( "POSH launch failed in fork: " );
         running_cond.notify_one();
         return EXIT_FAILURE;
 
@@ -326,8 +359,9 @@ int spawnPE( int id, int nbPE, bool debug_mode, char** arg ){
         //        execvp( arg[0], arg );
         execve( arg[0], arg, myEnv );
 
-#ifdef _DEBG
+#ifdef _DEBUG
         std::cerr << "execve returned. errno = " << errno << std::endl;
+        std::cerr << std::strerror( errno ) << std::endl;
 #endif        
 
         running_cond.notify_one();
@@ -354,46 +388,136 @@ int spawnPE( int id, int nbPE, bool debug_mode, char** arg ){
 
 int main( int argc, char** argv ) {
 
-    int np, i, k;
-    bool debug, trace;
+    // Declare the supported options.
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ( "help", "produce help message")
+        ( "number,n", po::value<int>(), "Number of process elements" )
+        ( "debug,d", "Debug mode" )
+        ( "traces,t", "Print traces and stats" )
+        ( "first,f", po::value<int>(), "Rank of the first process" )
+        ( "number_here,h", po::value<int>(), "Number of PEs to spawn here" )
+        ( "executable", po::value< vector<string> >(), "Executable")
+        ( "restart,r", "Restart from a checkpoint wave")
+        ;
+    po::positional_options_description p;
+    p.add("executable", -1);  // TODO: is this correct?
+
+    po::variables_map vm;
+    po::store( po::command_line_parser(argc, argv).
+                  options(desc).positional(p).run(), vm);
+    po::notify(vm);    
+
+    int np, i, k, first_process, number_here;
+    bool debug, trace, distributed;
     char* env_var;
     char* value;
+    vector<string> execut;
+    char** str_exec;
+  
+#if 0 //def DISTRIBUTED_POSH
+  mpi::environment env;
+  mpi::communicator world;
+#endif
 
-    /* initialize default values */
+   /* initialize default values */
 
     np = getNbCores();
     debug = trace = false;
     poshState = NOT_STARTED_YET;
+    first_process = 0;
+    number_here = -1;
+    distributed = false;
 
     /* Parse arguments */
 
-    k = 1;
-    while( k < argc ) {
-        if( 0 == strncmp( "-n", argv[k], std::min( strlen( "-n" ), strlen( argv[k] ) ) ) ) {
-            if( NULL != argv[k+1] ) {
-                k++;
-                np = atoi( argv[k] );
-            } else {
-                error_arguments( argv[0] );
-                return EXIT_FAILURE;
-            }
-        } else if( 0 == strncmp( "-d", argv[k], std::min( strlen( "-n" ), strlen( argv[k] ) ) ) ) {
-            debug = true;
-        } else if( 0 == strncmp( "-t", argv[k], std::min( strlen( "-n" ), strlen( argv[k] ) ) ) ) {
-            trace = true;
-        } else {
-            break;
-        }
-        k++;
+    if( vm.count( "help" ) ) {
+        cout << desc << "\n";
+        return 1;
     }
 
-#ifdef _DEBUG
-    std::cout << "I will spawn ";
-    for( i = k ; i < argc ; i++ ) {
-        std::cout << argv[i] << " " ;
+    if( vm.count( "number" ) ) {
+        np = vm[ "number" ].as<int>();
     }
-    std::cout << " on " << np << " threads"  << std::endl;
+    if( vm.count( "debug" ) ) {
+        debug = true;
+    }
+    if( vm.count( "traces" ) ) {
+        trace = true;
+    }
+#if CHECKPOINTING
+     if( vm.count( "restart" ) ) {
+        restart = true;
+    }
 #endif
+   if( vm.count( "first" ) ) {
+        first_process = vm[ "first" ].as<int>();
+        distributed = true;
+    } else {
+        first_process = 0;
+    }
+    if( vm.count( "number_here" ) ) {
+        number_here = vm[ "number_here" ].as<int>();
+    } else {
+        number_here = np;
+    }
+
+    /* If we want to use DMTCP for checkpointing, we need to start one coordinator per node */
+
+#ifdef CHANDYLAMPORT
+    cl_start_coordinator();
+#endif
+
+    str_exec = NULL;
+    if ( vm.count("executable") ){
+        execut = vm["executable"].as<std::vector<std::string> >();
+        int shiftarg;
+#ifdef CHANDYLAMPORT
+        shiftarg = _POSH_ADDITIONAL_CL_ARGUMENTS;
+#else
+        shiftarg = 0;
+#endif
+        str_exec = (char**) malloc( ( execut.size() + 1 + shiftarg ) * sizeof( char* ) );
+        
+#ifdef CHANDYLAMPORT
+        /* TODO: other option -q, --quiet (or set environment variable DMTCP_QUIET = 0, 1, or 2) */
+
+        str_exec[0] =  _POSH_DMTCPLAUNCH; 
+        str_exec[1] =  _POSH_DMTCPCOORD;
+        str_exec[2] =  _POSH_DMTCP_OPTION_SM;
+        str_exec[3] =  _POSH_DMTCP_PLUGIN1;
+        str_exec[4] =  _POSH_DMTCP_PLUGIN2;
+#ifndef _DEBUG
+        str_exec[5] =  _POSH_DMTCP_OPTION_QUIET;
+#endif
+#endif // CHANDYLAMPORT
+
+        for( i = 0 ; i < execut.size() ; i++ ) {
+             str_exec[i + shiftarg] = const_cast<char*>( execut[i].c_str() );
+        }
+        
+        str_exec[ execut.size() + shiftarg] = NULL;
+#ifdef _DEBUG
+        std::cout << "I will spawn ";
+        for( i = 0 ; i < execut.size() + shiftarg ; i ++ )
+            //    for( i = 0; str_exec[i] != NULL ; i++ ) 
+            std::cout << str_exec[i] << " " << std::endl;
+        
+        
+        for( std::vector<std::string>::iterator it = execut.begin(); it != execut.end(); ++it) {
+            std::cout << *it << " " ;
+        }
+        std::cout << " on " << np << " threads"  << std::endl;
+#ifdef DISTRIBUTED_POSH
+        /*        std::cout << "I am process " << world.rank() << " of " << world.size()
+                  << "." << std::endl;*/
+#endif // DISTRIBUTED_POSH
+#endif // _DEBUG
+    } else {
+        std::cout << "No exec provided" << std::endl;
+        return EXIT_SUCCESS;
+    }
+
 
     /* Get some environment variables */
 
@@ -444,10 +568,10 @@ int main( int argc, char** argv ) {
 
 #ifdef MULTITHREADED_SPAWN
     boost::thread_group process0;
-    process0.create_thread( boost::bind( &spawnPE, 0, np, debug, &argv[k] ));
+    process0.create_thread( boost::bind( &spawnPE, 0, np, debug, str_exec ));
     process0.join_all();
 #else    
-    spawnPE( 0, np, debug, &argv[k] );
+    spawnPE( first_process, np, debug, str_exec );
 #endif
 
 #if _DEBUG
@@ -463,11 +587,13 @@ int main( int argc, char** argv ) {
 #ifdef MULTITHREADED_SPAWN
     boost::thread_group workers;
 #endif
-    for( i = 1 ; i < np ; i++ ) {
+        std::cout << "spawn " << first_process << " to " << first_process + number_here << std::endl;
+    for( i = first_process + 1 ; i < first_process + number_here ; i++ ) {
+        std::cout << "spawn " << i << " / " << first_process + number_here << std::endl;
 #ifdef MULTITHREADED_SPAWN
-        workers.create_thread( boost::bind( &spawnPE, i, np, debug, &argv[k] ));
+        workers.create_thread( boost::bind( &spawnPE, i, np, debug, str_exec ));
 #else
-        spawnPE( i, np, debug, &argv[k] );
+        spawnPE( i, np, debug, str_exec );
 #endif
     }
 
@@ -485,6 +611,8 @@ int main( int argc, char** argv ) {
 #ifdef MULTITHREADED_SPAWN
      workers.join_all();
 #endif
+
+     free( str_exec );
 
     /* Wait for everybody to complete */
     for( i = 0 ; i < np ; i++ ) {

@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,7 +16,6 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include "shmem_bcast.h"
@@ -108,6 +106,7 @@ void shmem_double_broadcast( double* target, const double* source, size_t nelems
 /* flat algo */
 
 void shmem_int_bcast_flat( int* target, const int* source, size_t nbElem, int root ) {
-    shmem_template_bcast_flat( target, source, nbElem, root );
+    int PE_size = myInfo.getRank();
+    shmem_broadcast_template( target, source, nbElem, root, root, 0, PE_size, (char*)NULL );
 }
 

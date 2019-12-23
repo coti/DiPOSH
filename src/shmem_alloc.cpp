@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,11 +16,13 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include "shmem.h"
 #include "shmem_internal.h"
+
+#include "shmem_tcp.h"
+#include "posh_heap.h"
 
 bool checkSize( size_t );
 
@@ -169,6 +170,8 @@ bool checkSize( size_t size ) {
 /* Fake shmalloc, for internal use only.
    Allocates space in the symmetric heap without calling shmem_barrier_all 
    at the end.
+
+   FIXME: should get away
 */
 
 void* _shmallocFake( size_t size ){
@@ -182,18 +185,32 @@ void* _shmallocFake( size_t size ){
     return ptr;
 }
 
+#if 0 // TODO degager
 void* _remote_shmallocFake( int pe, size_t size ){
     if( ! checkSize( size ) ) return NULL;
     void* ptr = NULL;
-    try { 
-
-        managed_shared_memory* remoteHeap;
-        remoteHeap = myInfo.getNeighbor( pe );
-
-        ptr = remoteHeap->allocate( size );
-    } catch (boost::interprocess::bad_alloc &ex) {
-        std::cerr << ex.what() << std::endl; 
-    } 
+    neighbor_comm_type_t neighbor_type = _getNeighborComm( pe );
+    if( _shmem_likely( TYPE_SM == neighbor_type ) ) {
+        try { 
+            managed_shared_memory* remoteHeap;
+            remoteHeap = &(myInfo.getNeighbor( pe )->comm_channel.sm_channel.shared_mem_segment);
+            
+            ptr = remoteHeap->allocate( size );
+        } catch (boost::interprocess::bad_alloc &ex) {
+            std::cerr << ex.what() << std::endl; 
+        } 
+    } else {
+#ifdef DISTRIBUTED_POSH
+#ifdef TCPCHANNEL
+        size_t offset = shmem_remote_fake_shmalloc_tcp( pe, size );
+        ptr = _getLocalAddr( offset );
+#endif // TCPCHANNEL
+        
+#else
+        std::cerr << "Non-distributed POSH without shared memory? I cannot put anything." << std::endl;
+#endif // DISTRIBUTED
+    }
     return ptr;
 }
 
+#endif

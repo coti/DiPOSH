@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,7 +16,6 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include <stdlib.h>
@@ -54,17 +52,17 @@ template <class T>void shmem_template_and_to_all( T* target, T* source, int nred
 
 template <class T>void shmem_template_and_flat_get( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_get(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_and );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_and_flat_put( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_put(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_and );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_and_binary( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_binarytree_reduce(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_and );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 
@@ -94,17 +92,17 @@ template <class T>void shmem_template_or_to_all( T* target, T* source, int nredu
 
 template <class T>void shmem_template_or_flat_get( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_get(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_or );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_or_flat_put( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_put(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_or );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_or_binary( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_binarytree_reduce(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_or );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 
@@ -134,17 +132,17 @@ template <class T>void shmem_template_xor_to_all( T* target, T* source, int nred
 
 template <class T>void shmem_template_xor_flat_get( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_get(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_xor );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_xor_flat_put( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_put(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_xor );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_xor_binary( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_binarytree_reduce(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_xor );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 /**********************************************************************/
@@ -172,17 +170,17 @@ template <class T>void shmem_template_max_to_all( T* target, T* source, int nred
 
 template <class T>void shmem_template_max_flat_get( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_get(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_max );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_max_flat_put( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_put(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_max );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_max_binary( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_binarytree_reduce(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_max );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 /**********************************************************************/
@@ -210,17 +208,17 @@ template <class T>void shmem_template_min_to_all( T* target, T* source, int nred
 
 template <class T>void shmem_template_min_flat_get( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_get(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_min );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_min_flat_put( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_put(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_min );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T>void shmem_template_min_binary( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_binarytree_reduce(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_min );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 
@@ -250,18 +248,18 @@ template <class T, class V> void shmem_template_sum_to_all( T* target, T* source
 
 template <class T, class V>void shmem_template_sum_flat_get( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, V* pWrk, long* pSync) {
     shmem_template_flat_reduce_get(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_sum );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T, class V>void shmem_template_sum_flat_put( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, T* pWrk, long* pSync) {
     shmem_template_flat_reduce_put(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_sum );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 
 template <class T, class V>void shmem_template_sum_binary( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, V* pWrk, long* pSync) {
     shmem_template_binarytree_reduce(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_sum );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 
@@ -290,17 +288,17 @@ template <class T, class V>void shmem_template_prod_to_all( T* target, T* source
 
 template <class T, class V>void shmem_template_prod_flat_get( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, V* pWrk, long* pSync) {
     shmem_template_flat_reduce_get(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_prod );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T, class V>void shmem_template_prod_flat_put( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, V* pWrk, long* pSync) {
     shmem_template_flat_reduce_put(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_prod );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 template <class T, class V>void shmem_template_prod_binary( T* target, T* source, int nelems,  int PE_start, int logPE_stride, int PE_size, V* pWrk, long* pSync) {
     shmem_template_binarytree_reduce(target, source, nelems, PE_start, logPE_stride, PE_size, pWrk, pSync, &_shmem_operation_template_prod );
-    shmem_broadcast_template_flat( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
+    shmem_broadcast_template( target, target, nelems, PE_start, PE_start, logPE_stride, PE_size, /* pSync */ pWrk );
 }
 
 /**********************************************************************/
@@ -409,7 +407,7 @@ template <class T> bool shmem_template_get_and_operation( T* target, T* source, 
         std::cerr << " attempted to participate to a reduce operation ";
         std::cerr << "( code " << _SHMEM_COLL_REDUCE <<" ) whereas another ";
         std::cerr << "collective operation is in progress (code ";
-        std::cerr << remote_coll->type << ")" << std::cerr;
+        std::cerr << remote_coll->type << ")" << std::endl;
         return false;
     }
 #endif
@@ -588,7 +586,7 @@ template <class T, class V>void shmem_template_binarytree_reduce( T* target, T* 
             std::cerr << " attempted to participate to a reduce operation ";
             std::cerr << "( code " << _SHMEM_COLL_REDUCE <<" ) whereas another ";
             std::cerr << "collective operation is in progress (code ";
-            std::cerr << coll->type << ")" << std::cerr;
+            std::cerr << coll->type << ")" << std::endl;
             return;
         }
 #endif
@@ -645,7 +643,7 @@ template <class T, class V>void shmem_template_binarytree_reduce( T* target, T* 
                     std::cerr << " attempted to participate to a reduce operation ";
                     std::cerr << "( code " << _SHMEM_COLL_REDUCE <<" ) whereas another ";
                     std::cerr << "collective operation is in progress (code ";
-                    std::cerr << remote_coll->type << ")" << std::cerr;
+                    std::cerr << remote_coll->type << ")" << std::endl;
                     return;
                 }
 #endif

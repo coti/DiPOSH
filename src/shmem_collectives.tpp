@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,7 +16,6 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include "shmem_atomic.h"
@@ -41,8 +39,7 @@ template<class T>void shmem_template_allgather_flat( T* buffer, const T* myelem,
         }
     }
 
-
-    shmem_template_bcast_flat( buffer, buffer, size, ROOT );
+    shmem_broadcast_template( buffer, buffer, size, ROOT, ROOT, 0, size, (char*)NULL );
 
 }
 
@@ -68,7 +65,7 @@ template<class T>void shmem_template_gather_flat( T* buffer, const T* myelem, si
                std::cerr << " attempted to participate to a gather operation ";
                std::cerr << "( code " << _SHMEM_COLL_GATHER <<" ) whereas another ";
                std::cerr << "collective operation is in progress (code ";
-               std::cerr << coll->type << ")" << std::cerr;
+               std::cerr << coll->type << ")" << std::endl;
                return;
            }
 #endif

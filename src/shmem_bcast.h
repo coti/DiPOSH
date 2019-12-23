@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,7 +16,6 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #ifndef _SHMEM_BCAST_H
@@ -27,11 +25,13 @@
 
 void shmem_int_bcast_flat( int*, const int*, size_t, int );
 
-template <class T>void shmem_template_bcast_flat( T*, const T*, size_t, int );
+template <class T, class V>void shmem_broadcast_template( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync );
 
-template <class T, class V>void shmem_broadcast_template( T*, const T*, size_t, int, int, int, int, V* );
-template <class T, class V>void shmem_broadcast_template_flat( T*, const T*, size_t, int, int, int, int, V* );
+template <class T,class V>void shmem_broadcast_template_flat_put_blocking( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync );
+template <class T,class V>void shmem_broadcast_template_flat_get_blocking( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync );
 
+template <class T,class V>void shmem_broadcast_template_binomial_get_blocking( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync );
+template <class T,class V>void shmem_broadcast_template_binomial_put_blocking( T* target, const T* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, V* pSync );
 
 #include "shmem_bcast.tpp"
 
