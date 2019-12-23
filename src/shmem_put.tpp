@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,16 +16,27 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include <cstring> // memset() 
 
 #include "shmem_internal.h"
+#if defined(DISTRIBUTED_POSH) && defined(MPICHANNEL)
+#include "posh_mpi.h"
+#endif// MPICHANNEL
+#if defined(DISTRIBUTED_POSH)
+#include "shmem_tcp.h"
+#endif // DISTRIBUTED_POSH
+
+#include "perf.h"
 
 #ifdef _DEBUG
 #include "shmem_get.h"
 #endif
+
+/* FIXME should get away */
+
+#include "posh_heap.h"
 
 
 template<class T> void shmem_template_p( T* addr, T value, int pe ){
@@ -38,18 +48,56 @@ template<class T> void shmem_template_put( T* addr, const T* value, size_t nb, i
     /* TODO: this is atomic. OpenSHMEM's specs say that it can be non-blocking 
        in order to be able to be overlapped by something else */
 
+    POSH_PROF_FUNCTION_PRELUDE
+
+    myInfo.getNeighbor( pe )->communications->posh__put( addr, value, nb*sizeof( T ), pe );
+    //shmem_tcp_put( pe, reinterpret_cast<void *>( addr ), reinterpret_cast<const void *>( value ), nb*sizeof( T ) );
+
+    POSH_PROF_FUNCTION_CONCLUSION
+
+#if 0
+    
     /* Open remote PE's symmetric heap */
-
-    T* buf = (T*) _getRemoteAddr( addr, pe );
-
+    
     /* #ifdef _DEBUG
     std::cout << myInfo.getRank() << " put " << (T)*value << " into " << buf << std::endl;
     #endif */
     
     /* Put our data over there */
+    
+    Neighbor_t* neighbor = myInfo.getNeighbor( pe );
+#ifdef DISTRIBUTED_POSH
+    if( _shmem_likely( neighbor->comm_type == TYPE_SM ) ) {
+#endif // DISTRIBUTED_POSH
+        
+#ifdef CHANDYLAMPORT
+        /* Did I receive a marker? */
+        if( _shmem_unlikely( 0 != checkpointing.getMarker() ) ){
+            checkpointing.recvMarker();
+        }
+#endif // CHANDYLAMPORT
+        
+        T* buf = (T*) _getRemoteAddr( addr, pe );
+        _shmem_memcpy( reinterpret_cast<void *>( buf ), reinterpret_cast<const void *>( value ), nb*sizeof( T ) );
+        
+#ifdef DISTRIBUTED_POSH
+    } else {
 
-    _shmem_memcpy( reinterpret_cast<void *>( buf ), reinterpret_cast<const void *>( value ), nb*sizeof( T ) );
+#ifdef MPICHANNEL
+        shmem_mpi_put( pe, reinterpret_cast<void *>( addr ), reinterpret_cast<const void *>( value ), nb*sizeof( T ) );
+#endif // MPICHANNEL
 
+#ifdef TCPCHANNEL
+        if( _shmem_likely( neighbor->comm_type == TYPE_TCP ) ) {
+            shmem_tcp_put( pe, reinterpret_cast<void *>( addr ), reinterpret_cast<const void *>( value ), nb*sizeof( T ) );
+        } else {
+            std::cout << myInfo.getRank() << " Problem: unknown communication channel with " << pe << std::endl;
+        }
+#endif // TCPCHANNEL
+        std::cerr << "Non-distributed POSH without shared memory? I cannot put anything." << std::endl;
+    }
+#endif // DISTRIBUTED_POSH
+    // std::cout << "Put done" << std::endl;
     /* #ifdef _DEBUG */
     /* What did I just put over there? DEBUG */
 
@@ -58,7 +106,8 @@ template<class T> void shmem_template_put( T* addr, const T* value, size_t nb, i
     shmem_template_get( buf2, addr, nb, pe );
     std::cout << "--> " << myInfo.getRank() << " put " << *buf2 << " on " << pe << std::endl;
 #endif */
-
+#endif
+    
 }
 
 

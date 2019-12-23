@@ -1,6 +1,6 @@
 #
 #
-# Copyright (c) 2014 LIPN - Universite Paris 13
+# Copyright (c) 2014-2019 LIPN - Universite Paris 13
 #                    All rights reserved.
 #
 # This file is part of POSH.

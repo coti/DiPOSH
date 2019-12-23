@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,12 +16,23 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include <string.h>
 
 #include "shmem_internal.h"
+#if defined(DISTRIBUTED_POSH) && defined(MPICHANNEL)
+#include "posh_mpi.h"
+#endif// MPICHANNEL
+#if defined(DISTRIBUTED_POSH) 
+#include "shmem_tcp.h"
+#endif // DISTRIBUTED_POSH
+#include "perf.h"
+
+
+/* FIXME should get away */
+
+#include "posh_heap.h"
 
 template<class T> T shmem_template_g( T* addr, int pe ){
     T result;
@@ -32,29 +42,56 @@ template<class T> T shmem_template_g( T* addr, int pe ){
 
 
 template<class T> void shmem_template_get( T* target, const T* source, size_t nb, int pe ){
-
-    /* Open remote PE's symmetric heap */
-
-    const void* buf = const_cast<const void*>(_getRemoteAddr( reinterpret_cast<void*>( const_cast<T*>( source ) ), pe ) );
-
+    
+    POSH_PROF_FUNCTION_PRELUDE
+        
 #ifdef _DEBUG
-    std::cout << "--> "<< myInfo.getRank() << " mapped buff addr " << buf << " into " << target << std::endl;
+        //    std::cout << "--> "<< myInfo.getRank() << " mapped buff addr " << buf << " into " << target << std::endl;
 #endif
 
-    /* Pull the data here */
+        /* Pull the data here */
+        
+        myInfo.getNeighbor( pe )->communications->posh__get( target, source, nb*sizeof( T ), pe );
+        
+    POSH_PROF_FUNCTION_CONCLUSION
+#if 0
+        
+    neighbor_comm_type_t neighbor_type = _getNeighborComm( pe );
+    
+#ifdef DISTRIBUTED_POSH
+    if( _shmem_likely( TYPE_SM == neighbor_type ) ) { /* communicate over shared memory */
+#endif // DISTRIBUTED
+        
+#ifdef CHANDYLAMPORT
+        /* Did I receive a marker? */
+        if( _shmem_unlikely( 0 != checkpointing.getMarker() ) ){
+            checkpointing.recvMarker();
+        }
+#endif // CHANDYLAMPORT
+        
+        /* Open remote PE's symmetric heap */
+        const void* buf = const_cast<const void*>(_getRemoteAddr( reinterpret_cast<void*>( const_cast<T*>( source ) ), pe ) );
+        /* Pull the data here */
+        _shmem_memcpy( reinterpret_cast<void *>( target ), buf, nb * sizeof( T ) );
+        
+#ifdef DISTRIBUTED_POSH
+    } else { /* distributed memory -> TCP or whatever is available */
+#ifdef MPICHANNEL
+        shmem_mpi_get( pe, reinterpret_cast<void *>(target), static_cast<const void*>(source), nb * sizeof( T ) );
+#else
+        shmem_tcp_get( pe, reinterpret_cast<void *>(target), static_cast<const void*>(source), nb * sizeof( T ) );
+#endif // MPICHANNEL
+   }
+#endif // DISTRIBUTED
 
-#ifdef _DEBUG
-    void* rc;
-    rc = 
-#endif
-
-    _shmem_memcpy( reinterpret_cast<void *>( target ), buf, nb * sizeof( T ) );
-
-#ifdef _DEBUG
-    std::cout << "--> "<< myInfo.getRank() << " cp addr " << buf << " into " << target << " with rc = " << rc << std::endl;
-    std::cout  << "--> "<< myInfo.getRank() << " get " << (T)*target << " from " << buf << std::endl;
 #endif
     
+#ifdef _DEBUG
+    // std::cout << "--> "<< myInfo.getRank() << " cp addr " << buf << " into " << target << " with rc = " << rc << std::endl;
+    //   std::cout  << "--> "<< myInfo.getRank() << " get " << (T)*target << " from " << buf << std::endl;
+    //    std::cout  << "--> "<< myInfo.getRank() << " get " << *source << std::endl;
+#endif
+
 }
 
 

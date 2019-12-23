@@ -1,0 +1,324 @@
+#MODE=NODEBUG
+MODE=DEBUG
+#MODE=PROFILING
+
+DISTRIBUTED = yes
+
+WITHKNEM = no
+KNEM = /opt/knem
+WITHNMAD = yes
+NMAD = /opt/nmad
+
+DISTCHANNEL = nmad
+# possible values: nmad mpi
+MPILAUNCHER = no
+PADICOLAUNCHER = yes
+# possible values: padico mpi spawn
+
+CHANDYLAMPORT = no
+CL_ALGO = CL_MARKER
+# possible values: CL_MARKER CL_DOUBLEBARRIER
+
+PERF_PROFILING = no
+TAU=$(HOME)/tau/tau-2.28/
+TAUINC=$(TAU)/include/
+
+#################################################################################
+#                                  COMPILERS                                    #
+#################################################################################
+
+CC=g++
+CXX=g++
+LD=g++
+ifeq ($(DISTCHANNEL),mpi)
+     CC=mpicc
+     CXX=mpic++
+     LD=mpic++
+endif
+ifeq ($(MPILAUNCHER),yes)
+     CC=mpicc
+     CXX=mpic++
+     LD=mpic++
+endif
+ifeq ($(DISTCHANNEL),nmad)
+     CC=gcc
+     CXX=g++
+     LD=g++
+endif
+
+
+TOOLS=/usr/
+SHELL = /bin/bash
+
+#################################################################################
+#                              GENERAL FLAGS                                    #
+#################################################################################
+
+MYCFLAGS = -Wall  -I$(TOOLS)/include  -Wno-unused-variable -Wno-deprecated-declarations -fPIC -D_GNU_SOURCE -Wno-unused-function -std=c++11 #-fno-builtin -std=gnu++11 
+MYLDFLAGS = -Wall #-fno-builtin
+ifeq ($(MODE),DEBUG)
+  CFLAGS=-fPIC -pthread -O0 -g -D_DEBUG  $(MYCFLAGS) -D_TCP_DEBUG
+  LDFLAGS=-fPIC -pthread -O0 -g $(MYLDFLAGS)
+else
+  ifeq ($(MODE),PROFILING)
+    CFLAGS=-fPIC -O3 $(MYCFLAGS) -D_PROFILING
+    LDFLAGS=-fPIC -O3 $(MYLDFLAGS)
+  else
+    CFLAGS=-fPIC -O3 $(MYCFLAGS)
+    LDFLAGS=-fPIC -O3 $(MYLDFLAGS)
+  endif
+endif
+
+ifeq ($(MODE),DEBUG)
+  SHCCFLAGS=-fPIC -g -O0
+else
+  SHCCFLAGS=-fPIC -g -O3
+endif
+
+COLLTYPE = SHMEM_COLL_FLAT #  SHMEM_COLL_BINARY #
+MEMCPYTYPE =  _USE_MEMCPY_  # _USE_SSE_MEMCPY_ #
+
+CFLAGS += -D$(COLLTYPE) -D$(MEMCPYTYPE) #-D_USE_BLOCK_MEMCPY
+
+## Possible flags:
+# _DEBUG : debug mode
+# _TCP_DEBUG : debug the TCP communication engine
+# _SAFE : safe mode (activates run-time checks)
+# _PROFILING: activate low-level timers
+# NB: _DEBUG activates most of the features enabled by the _SAFE flag
+# MULTITHREADED_SPAWN
+
+#LIBS=-L/opt/local/lib -lboost_thread-mt
+
+MPIEXEC=mpiexec
+
+LIBS=-L/usr/local/lib -L$(TOOLS)/lib -lboost_thread -lboost_system -lpthread -lboost_program_options
+ifeq ($(DISTCHANNEL),mpi)
+     LIBS +=	-lrt $(LIBSMPI)
+endif
+
+#################################################################################
+#                             SOURCES TO COMPILE                                #
+#################################################################################
+
+SOURCES_LIB =   shmem_accessible.cpp   shmem_lock.cpp 			\
+		shmem_alloc.cpp        shmem_MeMyselfAndI_implem.cpp    \
+		shmem_atomic.cpp       shmem_collect.cpp		\
+		shmem_barrier.cpp      shmem_ptr.cpp			\
+		shmem_bcast.cpp        shmem_put.cpp			\
+		shmem_collectives.cpp  shmem_SymmetricHeap_Implem.cpp	\
+		shmem_get.cpp          shmem_sync.cpp			\
+		shmem_init.cpp         shmem_reduce.cpp			\
+		shmem_utils.cpp	       posh_sm.cpp			\
+		perf.cpp	
+
+TEMPLATE_FILES = shmem_atomic.tpp  shmem_collectives.tpp     \
+                 shmem_put.tpp     shmem_sync.tpp            \
+                 shmem_bcast.tpp   shmem_get.tpp             \
+                 shmem_reduce.tpp  shmem_collect.tpp
+
+TEMPLATE_HEADERS = $(TEMPLATE_FILES:.tpp=.h)
+
+HEADERS_LIB = shmem.h shmem_constants.h shmem_internal.h shmem_processinfo.h \
+	      shmem_utils.h perf.h $(TEMPLATE_FILES) $(TEMPLATE_HEADERS)
+
+#################################################################################
+#                     SUPPORTED COMMUNICATION CHANNELS                          #
+#################################################################################
+
+# if distributed
+ifeq ($(DISTRIBUTED),yes)
+     LIBSMPI=-lboost_mpi -lboost_serialization
+     CFLAGS += -DDISTRIBUTED_POSH
+endif
+ifeq ($(DISTCHANNEL),mpi)
+     CFLAGS += -DMPICHANNEL -I/usr/include/mpi/
+endif
+ifeq ($(DISTCHANNEL),nmad)
+     CFLAGS += -DNMADCHANNEL
+endif
+
+ifeq ($(DISTCHANNEL),mpi)
+     SOURCES_LIB += posh_mpi.cpp
+endif
+ifeq ($(DISTRIBUTED),yes)
+     SOURCES_LIB += ked_tcp.cpp             shmem_tcp.cpp               \
+     		    posh_tcp.cpp
+     HEADERS_LIB += ked_tcp.h shmem_tcp.h
+endif
+ifeq ($(WITHKNEM),yes)
+     SOURCES_LIB +=	posh_knem.cpp
+     CFLAGS += -I$(KNEM)/include -D_WITH_KNEM
+endif
+ifeq ($(WITHNMAD),yes)
+     SOURCES_LIB +=	posh_nmad.cpp
+     CFLAGS += `pkg-config --cflags nmad` -D_WITH_NMAD
+     LDFLAGS += `pkg-config --libs nmad`
+endif
+
+#################################################################################
+#                            RUN-TIME ENVIRONMENT                               #
+#################################################################################
+
+ifeq ($(PADICOLAUNCHER),yes)
+     CFLAGS += -DPADICOLAUNCHER
+     SOURCES_LIB += posh_launcher_padico.cpp
+endif
+ifeq ($(MPILAUNCHER),yes)
+     CFLAGS += -DMPILAUNCHER
+     SOURCES_LIB += posh_launcher_mpi.cpp
+endif
+		
+SOURCES_LIB += posh_launcher_sm.cpp
+
+#################################################################################
+#                               FAULT TOLERANCE                                 #
+#################################################################################
+
+# if coordinated checkpointing is activated
+ifeq ($(CHANDYLAMPORT),yes)
+     CFLAGS += -DCHANDYLAMPORT -D${CL_ALGO}
+endif 
+ifeq ($(PERF_PROFILING), yes)
+     CFLAGS += -DPERFPROFILING -DPROFILING_ON     -DTAU_GNU -DTAU_DOT_H_LESS_HEADERS                     -DTAU_LINUX_TIMERS                                 -DTAU_LARGEFILE -D_LARGEFILE64_SOURCE                        -DHAVE_TR1_HASH_MAP    -DTAU_SS_ALLOC_SUPPORT  -DEBS_CLOCK_RES=1  -DTAU_STRSIGNAL_OK    -DTAU_TRACK_LD_LOADER      
+     CFLAGS += -I$(TAUINC)
+endif
+
+#################################################################################
+#                               FAULT TOLERANCE                                 #
+#################################################################################
+
+ifeq ($(CHANDYLAMPORT),yes)
+     SOURCES_LIB += posh_chandylamport.cpp posh_checkpointing.cpp       \
+                    shmem_coord_checkpoint.cpp
+endif
+
+#################################################################################
+#                              STUFF TO COMPILE                                 #
+#################################################################################
+
+OBJECTS_LIB = $(SOURCES_LIB:.cpp=.o)
+OBJECTS_LIB_C = $(SOURCES_LIB:.c=.o)
+
+SOURCES_EXEC = spawn.cpp shmem_portability.cpp
+ifeq ($(CHANDYLAMPORT),yes)
+     SOURCES_EXEC += posh_ft_coordinator.cpp
+endif 
+HEADERS_EXEC = shmem_constants.h shmem_portability.h
+ifeq ($(CHANDYLAMPORT),yes)
+     HEADERS_EXEC += posh_checkpointing.h
+endif 
+OBJECTS_EXEC = $(SOURCES_EXEC:.cpp=.o)
+
+PARSER = shmem_s2sc
+
+LIBSHMEM = libshmem.so
+EXEC = spawn
+COMPILER = shmemcc
+
+#################################################################################
+#                                 TARGETS                                       #
+#################################################################################
+
+TESTDIR  = ./prog
+TESTPROG = test_shmem
+#TESTPROG = test_barrier
+BENCHPROG = bench_putget
+
+ifeq ($DISTRIBUTED,yes)
+     all: $(LIBSHMEM) $(PARSER)
+else
+     all: $(LIBSHMEM) $(EXEC) $(PARSER)
+endif
+
+checks: helloWorld put put2 get get2
+
+
+#################################################################################
+#                                 COMPILATION                                   #
+#################################################################################
+# POSH RTE
+
+$(EXEC): $(OBJECTS_EXEC) $(PARSER) $(HEADERS_EXEC)
+	$(LD) $(LDFLAGS) -o $@ $(OBJECTS_EXEC) $(LIBS)
+
+# lib shmem
+
+$(LIBSHMEM): $(OBJECTS_LIB) $(HEADERS_LIB) $(TEMPLATE_FILES) $(TEMPLATE_HEADERS)
+	$(LD) $(LDFLAGS) -shared -o $@ $(OBJECTS_LIB) $(LIBS) 
+
+.cpp.o:
+	$(CXX) $(CFLAGS) -c $<
+
+.c.o:
+	$(CC) $(CFLAGS) -c $<
+
+# source-to-source compiler
+
+$(PARSER): $(PARSER).o 
+	gcc $(CFLAGS) -o $(PARSER) $(PARSER).o -lfl
+
+$(PARSER).o: $(PARSER).c
+	gcc $(CFLAGS) -c $(PARSER).c
+
+$(PARSER).c: $(PARSER).flex
+	flex -o $(PARSER).c $(PARSER).flex 
+
+# actions
+
+clean:
+	@rm -f $(EXEC) $(LIBSHMEM) $(OBJECTS_LIB) $(OBJECTS_EXEC) $(TESTDIR)/$(TESTPROG) $(TESTDIR)/$(BENCHPROG) $(PARSER) $(PARSER).c $(PARSER).o
+	@find . -name '*.dSYM' -exec @rm -Rf {} \;
+	# rm -f examples/helloWorld examples/put examples/get
+
+
+test: $(EXEC) $(LIBSHMEM) $(TESTDIR)/$(TESTPROG).c
+	./shmemcc $(SHCCFLAGS) -o $(TESTDIR)/$(TESTPROG) $(TESTDIR)/$(TESTPROG).c
+	if [ $(DISTRIBUTED) = yes ]; then  \
+	     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:. ;  $(MPIEXEC) -n 4 $(TESTDIR)/$(TESTPROG) ;  \
+	else  \
+	     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:. ; ./$(EXEC) -n 4 $(TESTDIR)/$(TESTPROG) ;     \
+	fi
+
+bench: $(EXEC) $(LIBSHMEM)  $(TESTDIR)/$(BENCHPROG).c
+	./$(COMPILER) $(SHCCFLAGS) -o $(TESTDIR)/$(BENCHPROG) $(TESTDIR)/$(BENCHPROG).c -lrt -lm
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:. ; ./$(EXEC) -n 2 $(TESTDIR)/$(BENCHPROG) 20 33554432
+
+benchpapi: $(EXEC) $(LIBSHMEM)  $(TESTDIR)/$(BENCHPROG).c
+	./$(COMPILER) $(SHCCFLAGS) -o $(TESTDIR)/$(BENCHPROG) $(TESTDIR)/$(BENCHPROG).c -DWITHPAPI -lpapi
+	./$(EXEC) -n 2 $(TESTDIR)/$(BENCHPROG) 20 33554432
+
+stats:
+	wc -l $(SOURCES_LIB)  $(HEADERS_LIB) $(SOURCES_EXEC)  $(HEADERS_EXEC) $(TESTDIR)/$(TESTPROG).c Makefile $(PARSER).flex $(COMPILER) | tail -n 1
+	grep shmem_ shmem.h | grep -v include | grep -v pdf | wc -l
+
+valgrind: $(EXEC) $(LIBSHMEM) $(TESTDIR)/$(TESTPROG).c
+	./shmemcc $(SHCCFLAGS) -o $(TESTDIR)/$(TESTPROG) $(TESTDIR)/$(TESTPROG).c
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ; valgrind --log-file=/tmp/father.%p --trace-children=yes ./$(EXEC) -n 4 /usr/bin/valgrind --log-file=/tmp/child.%p $(TESTDIR)/$(TESTPROG) 
+
+
+NP=4
+
+helloWorld: examples/helloWorld.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/helloWorld examples/helloWorld.c 
+	./$(EXEC) -n $(NP) examples/helloWorld
+
+
+put: examples/put.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/put examples/put.c 
+	./$(EXEC) -n $(NP) examples/put
+
+put2: examples/put2.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/put2 examples/put2.c 
+	./$(EXEC) -n $(NP) examples/put2
+
+get: examples/get.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/get examples/get.c 
+	#./$(EXEC) -n $(NP) examples/get
+
+
+get2: examples/get2.c
+	./shmemcc -L$(LIBDIR) -Wall -o examples/get2 examples/get2.c 
+	#./$(EXEC) -n $(NP) examples/get2
+
+

@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,11 +16,11 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include "shmem.h"
 #include "shmem_internal.h"
+#include "shmem_barrier.h"
 
 /* Suspends the execution of the calling PE until all other PEs issue a call to this
  * particular shmem_barrier_all() statement.
@@ -31,7 +30,26 @@
  * previously issued local memory stores and target memory updates issued via OpenSHMEM
  * functions such as shmem_put32.
  */
+
+#ifdef _WITH_NMAD
+nm_comm_t p_comm = NULL; 
+#endif // _WITH_NMAD
+
 void shmem_barrier_all( ){
+#ifndef MPICHANNEL
+#ifdef _WITH_NMAD
+    if( NULL == p_comm )
+        p_comm = nm_comm_world( "nm_posh_barrier" );
+    nm_coll_barrier( p_comm, TAG_BARRIER );
+#else
+    shmem_barrier_naive();
+#endif // _WITH_NMAD
+#else
+    MPI_Barrier( MPI_COMM_WORLD );
+#endif 
+}
+
+void shmem_barrier_naive(){
     int ROOT = 0;
     Collective_t* coll = myInfo.getCollective();
     int myrank = myInfo.getRank();

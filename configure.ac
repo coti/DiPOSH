@@ -1,6 +1,6 @@
 #
 #
-# Copyright (c) 2014 LIPN - Universite Paris 13
+# Copyright (c) 2014-2019 LIPN - Universite Paris 13
 #                    All rights reserved.
 #
 # This file is part of POSH.
@@ -23,6 +23,7 @@
 AC_INIT([POSH: Paris OpenSHMEM],[0.2],[camille.coti@lipn.univ-paris13.fr])
 AM_INIT_AUTOMAKE([-Wall])
 AC_CONFIG_MACRO_DIR([config])
+AC_CONFIG_MACRO_DIR([m4])
 AM_PROG_AR
 LT_INIT
 
@@ -34,12 +35,15 @@ AC_PROG_CXX
 
 AC_CONFIG_SRCDIR([src/shmem.h])
 AC_PREREQ([2.61]) # CC: not sure about the exact minimal number
+AC_LANG([C++])
 
 # CHECK FOR EXTERNAL LIBRARIES
 
 LIBS="$LIBS"
 
+#################################################################################
 # Boost
+#################################################################################
 
 AC_ARG_WITH(
     [boost],
@@ -52,11 +56,11 @@ AC_ARG_WITH(
 
 if test -n "$BOOSTPATH"; then
        AC_MSG_CHECKING([user-supplied Boost installation])
-       CPPFLAGS="-I${BOOSTPATH} ${CPPFLAGS}"
-       LDFLAGS="-L${BOOSTPATH} ${LDFLAGS}"
+       CPPFLAGS="-I${BOOSTPATH}/include ${CPPFLAGS}"
+       LDFLAGS="-L${BOOSTPATH}/lib ${LDFLAGS}"
 fi
 
-AC_LANG_PUSH([C++])
+#AC_LANG_PUSH([C++])
 AC_CHECK_HEADERS([boost/interprocess/managed_shared_memory.hpp], [],
     [AC_MSG_ERROR(You need the Boost Interprocess libraries.)])
 AC_CHECK_HEADERS([boost/thread.hpp], [],
@@ -65,12 +69,24 @@ AC_CHECK_HEADERS([boost/bind.hpp], [],
     [AC_MSG_ERROR(You need the Boost Bind libraries.)])
 AC_CHECK_HEADERS([boost/system/error_code.hpp], [],
     [AC_MSG_ERROR(You need the Boost System libraries.)])
-AC_LANG_POP([C++])
+#AC_LANG_POP([C++])
 
-CPPFLAGS="${CPPFLAGS} -Wall -Wno-unused-variable -Wno-deprecated-declarations -fPIC -D_GNU_SOURCE -std=gnu++11 -Wno-unused-function"
-LDFLAGS="${LDFLAGS} -lboost_thread -lboost_system -lpthread"
+AX_PTHREAD([], [AC_MSG_ERROR([Missing pthread library])])
 
+# Check only boost_thread, assume optimistically that the other ones will be with it
+AX_CXX_CHECK_LIB(boost_thread, boost::thread, [], [
+    AX_CXX_CHECK_LIB(boost_thread-mt, boost::thread, [], [
+        echo "Error: POSH needs some Boost libraries: boost_thread or boost_thread-mt, boost_system and boost_program_options. Check the path with --with-boost"
+	exit -1
+    ])
+])
+
+CPPFLAGS=" ${CPPFLAGS} -Wall -Wno-unused-variable -Wno-deprecated-declarations -fPIC -D_GNU_SOURCE -Wno-unused-function  -Wno-deprecated-register"
+LDFLAGS=" ${LDFLAGS}  -lboost_system -lpthread  -lboost_program_options "
+
+#################################################################################
 # flex
+#################################################################################
 
 #AC_CHECK_PROG([FLEX], [flex lex], [flex])
 #AM_MISSING_PROG([FLEX], [$FLEX])
@@ -78,9 +94,11 @@ AC_PROG_LEX
 
 # gnu++11
 AX_CXX_COMPILE_STDCXX_11
-CPPFLAGS="${CPPFLAGS} -std=gnu++11"
+CPPFLAGS="${CPPFLAGS} -std=gnu++11 "
 
+#################################################################################
 # DEBUGGING MODE
+#################################################################################
 
 AC_ARG_ENABLE(debug,
 AS_HELP_STRING([--enable-debug],
@@ -100,7 +118,9 @@ else
   LDFLAGS=" ${LDFLAGS}"
 fi
 
+#################################################################################
 # SAFE MODE
+#################################################################################
 
 AC_ARG_ENABLE(safe,
 AS_HELP_STRING([--enable-safe],
@@ -113,10 +133,43 @@ esac],
 [safe=false])
 
 if test $safe = true ; then
-  CPPFLAGS="-D_SAFE ${CPPFLAGS}"
+  CPPFLAGS="-D_SAFE ${CPPFLAGS} "
 fi
 
+#################################################################################
+# WHICH RTE
+#################################################################################
+
+## TODO disable it
+
+AC_ARG_ENABLE([launcher-local],
+	AS_HELP_STRING([--enable-launcher-local], [Enable local, single-node launcher [default=yes]]),
+	[ AM_CONDITIONAL(ENABLE_LAUNCHERLOCAL, true)
+       	CPPFLAGS+=" -DENABLE_LAUNCHER_LOCAL "],
+	[ AM_CONDITIONAL(ENABLE_LAUNCHERLOCAL, true) ] )
+
+AC_ARG_ENABLE([launcher-mpi],
+	AS_HELP_STRING([--enable-launcher-mpi], [Enable MPI launcher [default=disabled]]),
+	[ AM_CONDITIONAL(ENABLE_LAUNCHERMPI, true)
+          CPPFLAGS+="-DMPILAUNCHER  -DDISTRIBUTED_POSH "
+       	  CC=mpicc
+       	  CXX=mpic++
+       	  LD=mpic++
+       	],
+	[ AM_CONDITIONAL(ENABLE_LAUNCHERMPI, false) ] )
+
+# TODO check the presence of MPI and PadicoTM
+
+AC_ARG_ENABLE([launcher-padico],
+	AS_HELP_STRING([--enable-launcher-padico], [Enable PadicoTM launcher [default=disabled]]),
+	[ AM_CONDITIONAL(ENABLE_LAUNCHERPADICO, true)
+          CPPFLAGS+="-DPADICOLAUNCHER  -DDISTRIBUTED_POSH "
+       	],
+	[ AM_CONDITIONAL(ENABLE_LAUNCHERPADICO, false) ] )
+
+#################################################################################
 # CHOICE OF MEMCPY
+#################################################################################
 
 MEMCPYTYPE=_USE_MEMCPY_ # Default
 
@@ -147,9 +200,52 @@ AS_IF( [test "x$memcpy" = "xmmx"],
 AS_IF( [test "x$memcpy" = "xmmx2"],
        [ MEMCPYTYPE=_USE_MMX2_COPY_ ])
 
-CPPFLAGS=" -D${MEMCPYTYPE} ${CPPFLAGS}"
+CPPFLAGS=" -D${MEMCPYTYPE} ${CPPFLAGS} "
 
+#################################################################################
+# CHOICE OF COMMUNICATION CHANNEL
+#################################################################################
+
+# TODO
+# verifier que les dependances sont la
+# verifier qu'on n'a pas d'incoherence entre RTE et comm channel
+
+#AC_ARG_ENABLE([commsm],
+#	AS_HELP_STRING([--enable-sm-comm], [Enable local shared memory communications (strongly recommanded) [default=yes]]),
+#	[],
+#	[enable_commsm=yes] )
+
+AC_ARG_ENABLE([knem-comm],
+	AS_HELP_STRING([--enable-knem-comm], [Enable local KNEM communications [default=no]]),
+	[ AM_CONDITIONAL(ENABLE_COMM_KNEM, true)
+       	  CPPFLAGS+=" -D_WITH_KNEM "],
+	[ AM_CONDITIONAL(ENABLE_COMM_KNEM, false) ] )
+
+AC_ARG_ENABLE([tcp-comm],
+	AS_HELP_STRING([--enable-tcp-comm], [Enable TCP communications (slow) [default=no]]),
+	[ AM_CONDITIONAL(ENABLE_COMM_TCP, true)
+       	  CPPFLAGS+=" -DDISTRIBUTED_POSH  "],
+	[ AM_CONDITIONAL(ENABLE_COMM_TCP, false) ] )
+
+AC_ARG_ENABLE([mpi-comm],
+	AS_HELP_STRING([--enable-mpi-comm], [Enable MPI communications [default=no]]),
+	[ AM_CONDITIONAL(ENABLE_COMM_MPI, true)
+       	  CPPFLAGS+=" -DMPICHANNEL -DDISTRIBUTED_POSH "
+	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ],
+		   [ AC_MSG_FAILURE( MPI is required ) ] )
+          ],
+	[ AM_CONDITIONAL(ENABLE_COMM_MPI, false) ] )
+
+AC_ARG_ENABLE([nmad-comm],
+	AS_HELP_STRING([--enable-nmad-comm], [Enable NewMadeleine communications [default=no]]),
+	[ AM_CONDITIONAL(ENABLE_COMM_NMAD, true)
+       	  CPPFLAGS+="-DNMADCHANNEL `pkg-config --cflags nmad` -D_WITH_NMAD  -DDISTRIBUTED_POSH " 
+          LDFLAGS += `pkg-config --libs nmad` ],
+	[ AM_CONDITIONAL(ENABLE_COMM_NMAD, false) ] )
+
+#################################################################################
 # CHOICE OF COLLECTIVE COMMUNICATIONS
+#################################################################################
 
 COLLTYPE=SHMEM_COLL_BINARY  # Default
 
@@ -170,9 +266,38 @@ AS_IF( [test "x$colltype" = "xbinary"],
 AS_IF( [test "x$colltype" = "xflat"],
        [ COLLTYPE=SHMEM_COLL_FLAT ] )
 
-CPPFLAGS=" -D${COLLTYPE} ${CPPFLAGS}"
+CPPFLAGS=" -D${COLLTYPE} ${CPPFLAGS} "
 
+#################################################################################
+# FAULT TOLERANCE
+#################################################################################
+
+# TODO: path to the checkpointing library
+
+AC_ARG_WITH(
+    faulttolerance,
+    AS_HELP_STRING(
+	[--with-faulttolerance=ALGORITHM],
+	[Use fault tolerance: Chandy-Lamport (ALGORITHM=marker), blocking with a double barrier (ALGORITHM=doublebarrier)]
+    ),
+    [ faulttolerance="$withval" ]
+)
+
+AS_IF( [test "x$faulttolerance" = "xmarker"],
+       [ CPPFLAGS+=" -DCHANDYLAMPORT -DCL_MARKER " ])
+AS_IF( [test "x$faulttolerance" = "xdoublebarrier"],
+       [ CPPFLAGS+=" -DCHANDYLAMPORT -DCL_DOUBLEBARRIER " ])
+
+
+#################################################################################
+# PERFORMANCE PROFILING
+#################################################################################
+
+# TODO
+
+#################################################################################
 # END
+#################################################################################
 
 AC_PROG_INSTALL
 AC_CONFIG_HEADERS([config.h])

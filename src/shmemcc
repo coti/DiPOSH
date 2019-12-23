@@ -1,31 +1,11 @@
-#
-#
-# Copyright (c) 2014 LIPN - Universite Paris 13
-#                    All rights reserved.
-#
-# This file is part of POSH.
-# 
-# POSH is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# 
-# POSH is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License
-# along with POSH.  If not, see <http://www.gnu.org/licenses/>.
-#
-#
-
 #!/usr/bin/perl
 
 use strict;
 use warnings;
 
 use Cwd;
+use Cwd "abs_path";
+use File::Basename;
 
 my $num_args = $#ARGV + 1;
 if ($num_args < 2) {
@@ -36,15 +16,19 @@ if ($num_args < 2) {
 my $skip = 0;
 my @input_files = ();
 my $output_exec="";
+my $libraries = "";
+my $includepaths = "";
 my $c = "";
+my $l = "";
 my $no_static = 0;
 my $options = "";
 my $cur_dir = getcwd;
 
 my $libs="-L. -lshmem -lboost_system";
 my $CXX="g++";
-my $s2sc="./shmem_s2sc";
-
+my $dir = getcwd;
+my $abs_path = dirname( abs_path($0) );
+my $s2sc = $abs_path . "/shmem_s2sc";
 
 # parse args and delete -o <output>
 # and all the options
@@ -58,11 +42,28 @@ foreach my $arg(@ARGV){
 	} else {
 	    $c = substr( $arg, 0, 1 );
 	    if( $c eq '-' ) {
-		$options = $options . " " . $arg;
+		$l = substr( $arg, 0, 2 );
+		if( $l eq "-L" || $l eq "-l" ) {
+		    $libraries = $libraries . " " . $arg;
+		} else {
+		    if( $l eq "-I" ) {
+			$includepaths = $includepaths . " " . $arg;
+		    } else {
+			$options = $options . " " . $arg;
+		    }
+		}
 		;;
 	    } else {
 		if( $skip == 0 ) {
-		    @input_files = (@input_files, $arg);
+		    # is it a static lib?
+		    my $end = substr( $arg, -2 );
+		    print $end;
+		    if( $end eq ".a" ) {
+			$libraries = $arg . " " . $libraries;
+		    } else {
+			# No, this is a real input file.
+			@input_files = (@input_files, $arg);
+		    }
 		} else {
 		    # skip this one too
 		    $output_exec=$arg;
@@ -77,6 +78,7 @@ foreach my $arg(@ARGV){
 my $filename;
 my $command = "";
 my $inputfilelist = "";
+$includepaths = $includepaths . " -I" . $cur_dir;
 
 if( $no_static == 0 ) {
     foreach my $f( @input_files ) {
@@ -92,7 +94,7 @@ if( $no_static == 0 ) {
     }
 }
 
-my $cmdline=$CXX . $options . " -o " . $output_exec . " " . $inputfilelist . " " . $libs . " -I" . $cur_dir;
+my $cmdline=$CXX . $options . " " . $includepaths . " -o " . $output_exec . " " . $inputfilelist . " " . $libs . " " . $libraries;
 print $cmdline . "\n";
 
 system( $cmdline );

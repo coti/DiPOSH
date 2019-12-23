@@ -1,6 +1,5 @@
 /*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2019 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,8 +16,37 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
+
+#include <sys/types.h>
+#include <fstream>
 
 #include "shmem_utils.h"
 
+/* Get the command-line arguments from anywhere 
+   Necessary because OpenSHMEM's initialization does not take them as arguments
+*/
+
+void getArguments( int* argc, char*** argv ) {
+    int pid = getpid();
+    char filename[256];
+    snprintf( filename, sizeof( filename ), "/proc/%d/cmdline", pid );
+    std::string line;
+    std::ifstream myfile( filename );
+    std::vector<std::string> result; 
+    
+    if( myfile.is_open() ) {
+        while ( std::getline( myfile, line, '\0' ) ) {
+            result.push_back( line );
+        }
+        myfile.close();
+    }
+    *argc = result.size();
+    *argv = (char**) malloc( ( *argc + 1 ) * sizeof( char* ) );
+    for( unsigned int i = 0; i < result.size(); i++) {
+        asprintf( &((*argv)[i]), "%s", result[i].c_str() );
+                                     
+    }
+    (*argv)[*argc] = NULL;
+    
+}

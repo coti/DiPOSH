@@ -1,25 +1,3 @@
-/*
- *
- * Copyright (c) 2014 LIPN - Universite Paris 13
- *                    All rights reserved.
- *
- * This file is part of POSH.
- * 
- * POSH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * POSH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
-
 %option yylineno
 
 %{
@@ -309,6 +287,53 @@ list_t* getNextStatement( list_t** lst, list_t* thisStmt ){
     return st;
 }
 
+list_t* getPreviousStatement( list_t** lst, list_t* st ){
+    if( lst == NULL ) return NULL;
+    if( *lst == st ) return st;
+    
+    list_t* cur = *lst;;
+
+    while( NULL != cur ){
+        if( cur->next == st ) return cur;
+        cur = cur->next;
+    }
+    return NULL;
+}
+
+list_t* insertStatementHere( list_t** lst, list_t* putItThere ){
+
+   if( *lst == putItThere || NULL == lst ) {
+        return insertStatementBeginning( lst );        
+    }
+
+    list_t* st = (list_t*) malloc( sizeof( list_t ) );
+    list_t* tmp;
+
+    if( NULL == putItThere ) {
+        *lst = st;
+        st->next = *lst;
+        return st ;
+    } 
+
+    printf( "insert\n" );
+
+    /*
+    tmp = putItThere->next;
+    putItThere->next = st;
+    st->next = tmp;
+    */
+
+    tmp = getPreviousStatement( lst, putItThere );
+    if( NULL == tmp ) {
+        return insertStatementBeginning( lst );        
+    } else {
+        tmp->next = st;
+        st->next = putItThere;
+    }
+    
+    return st;
+}
+
 list_t* insertStatementBeginning( list_t** lst ) {
     list_t* st = (list_t*) malloc( sizeof( list_t ) );
     st->next = *lst;
@@ -434,10 +459,12 @@ void buildStatement( ){
     } else {
 
         char* ptrName;
+        list_t* posFree = freeStatementsList;
+        list_t* posBeforeFree = posFree;
 
         asprintf( &ptrName, "%s", varName );
              
-       for( j = 0 ; j < var.tabDims ; j++ ) {
+        for( j = 0 ; j < var.tabDims ; j++ ) {
             int k, k2;
 
             bool nested;
@@ -451,9 +478,10 @@ void buildStatement( ){
             if( true == nested ) {
                 thisStmt = getNextStatement( &initStatementsList, getLastStatement( initStatementsList ) );
                 asprintf( &(thisStmt->statement), "int __SHMEM__idx_%d ; \nfor( __SHMEM__idx_%d = 0 ; __SHMEM__idx_%d < %d ; __SHMEM__idx_%d++ ) { ", j-1, j-1, j-1, var.tabSize[j-1], j-1 );
-                freeStmt = insertStatementBeginning( &freeStatementsList );
-                printf( "new statement: %p\n", freeStmt );
-                asprintf( &(freeStmt->statement), "int __SHMEM__idx_%d ; \nfor( __SHMEM__idx_%d = 0 ; __SHMEM__idx_%d < %d ; __SHMEM__idx_%d++ ) { ", j-1, j-1, j-1, var.tabSize[j-1], j-1 );
+
+                freeStmt = insertStatementHere( &freeStatementsList, posFree );
+
+                asprintf( &(freeStmt->statement), "for( __SHMEM__idx_%d = 0 ; __SHMEM__idx_%d < %d ; __SHMEM__idx_%d++ ) { ", j-1, j-1, var.tabSize[j-1], j-1 );
             }
 
             /* count the length of the line */
@@ -487,7 +515,7 @@ void buildStatement( ){
 
             /* build the statement itself */
             
-            thisStmt->statement = (char*) malloc( ( l + 1 ) * sizeof( char ));
+            thisStmt->statement = (char*) malloc( ( l + 2 ) * sizeof( char ));
             
             sprintf( thisStmt->statement, "%s = (%s", ptrName, var.datatype );
 
@@ -504,8 +532,14 @@ void buildStatement( ){
             
             sprintf( ( thisStmt->statement) + k2, ") );" );
 
+            posBeforeFree = freeStmt;
             freeStmt = getNextStatement( &freeStatementsList, freeStmt );
-            asprintf( &(freeStmt->statement), "shfree( %s );", ptrName );
+            if( j == 0 ) {
+                asprintf( &(freeStmt->statement), "shfree( %s );", ptrName );
+            } else {
+                asprintf( &(freeStmt->statement), "shfree( %s ); \n}", ptrName );
+            }
+            posFree = freeStmt;
        }
      
 
@@ -513,13 +547,13 @@ void buildStatement( ){
     }
 
     /* Close the curly brackets */
-
+    
     for( j = 1 ; j < var.tabDims ; j++ ) {
         thisStmt = getNextStatement( &initStatementsList, getLastStatement( initStatementsList ) );
         asprintf( &(thisStmt->statement), "}");
 
-        freeStmt = getNextStatement( &freeStatementsList, freeStmt );
-        asprintf( &(freeStmt->statement), "}" );
+        /*    freeStmt = getNextStatement( &freeStatementsList, freeStmt );
+              asprintf( &(freeStmt->statement), "}" );*/
    }
 
     printAllStatements( declStatementsList );
@@ -532,7 +566,7 @@ void buildStatement( ){
         thisStmt = getNextStatement( &initStatementsList, getLastStatement( initStatementsList ) );
         asprintf( &(thisStmt->statement), "memcpy( %s, __SHMEM__%s, sizeof( __SHMEM__%s ) );", var.name, var.name, var.name );
     }
-    
+
     /* The end */
 
     free( varName );
@@ -584,6 +618,7 @@ void dumpInit(){
    where we have found start_pes() */
 
 void dumpFree(){
+    printf( "\n" );
     printAllStatements( freeStatementsList );
     freeStatements( &freeStatementsList ); 
 }
