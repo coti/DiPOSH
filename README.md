@@ -1,4 +1,17 @@
 # POSH
+
+### News
+
+Commit dbc71f7 (yes I struggled a bit with GitHub)
+* POSH is now distributed, therefore DiPOSH. It supports MPI and PadicoTM run-time environments, and various communication drivers. See [CM19].
+* Fault tolerance using blocking coordinated checkpointing (only for shared memory so far). See [BC18].
+* New building systm based on automake/autoconf.
+
+[BC18] F. Butelle, C. Coti: Distributed Snapshot for Rollback-Recovery with One-Sided Communications, in 2018 International Conference on High Performance Computing & Simulation (HPCS 2018), July 2018, Orleans, France.
+
+[CM19] C. Coti, A. D. Malony: On the Road to DiPOSH: Adventures in High-Performance OpenSHMEM, in Proceedings of the 13th International Conference on Parallel Processing and Applied Mathematics (PPAM 2019), September 2019, Bialystok, Poland.
+
+
 ### Paris OpenSHMEM http://lipn.univ-paris13.fr/~coti/POSH
 
 ![logo](https://raw.github.com/coti/POSH/master/img/logo_paris_open_shmem.png)
