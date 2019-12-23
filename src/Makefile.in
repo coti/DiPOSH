@@ -122,6 +122,7 @@ subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cxx_check_lib.m4 \
 	$(top_srcdir)/m4/ax_mpi.m4 $(top_srcdir)/m4/ax_pthread.m4 \
+	$(top_srcdir)/config/ax_cxx_compile_stdcxx_11.m4 \
 	$(top_srcdir)/config/libtool.m4 \
 	$(top_srcdir)/config/ltoptions.m4 \
 	$(top_srcdir)/config/ltsugar.m4 \
@@ -325,6 +326,7 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 GREP = @GREP@
+HAVE_CXX11 = @HAVE_CXX11@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
