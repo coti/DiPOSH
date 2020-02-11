@@ -162,13 +162,12 @@ AC_ARG_ENABLE([launcher-mpi],
 	AS_HELP_STRING([--enable-launcher-mpi], [Enable MPI launcher [default=disabled]]),
 	[ AM_CONDITIONAL(ENABLE_LAUNCHERMPI, true)
           CPPFLAGS+="-DMPILAUNCHER  -DDISTRIBUTED_POSH "
-       	  CC=mpicc
-       	  CXX=mpic++
-       	  LD=mpic++
-       	],
+	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ],
+		   [ AC_MSG_FAILURE( MPI is required ) ] )
+      	],
 	[ AM_CONDITIONAL(ENABLE_LAUNCHERMPI, false) ] )
 
-# TODO check the presence of MPI and PadicoTM
+# TODO check the presence of PadicoTM
 
 AC_ARG_ENABLE([launcher-padico],
 	AS_HELP_STRING([--enable-launcher-padico], [Enable PadicoTM launcher [default=disabled]]),
@@ -256,11 +255,11 @@ AC_ARG_ENABLE([nmad-comm],
 AC_ARG_ENABLE([mpi-hub],
 	AS_HELP_STRING([--enable-mpi-hub], [Enable hub communications using MPI [default=no]]),
 	[ AM_CONDITIONAL(ENABLE_COMM_HUB_MPI, true)
-       	  CPPFLAGS+=" -DMPIHUBCHANNEL -DDISTRIBUTED_POSH "
+      	  CPPFLAGS+=" -DMPIHUBCHANNEL -DDISTRIBUTED_POSH "
 	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ],
-		   [ AC_MSG_FAILURE( MPI is required ) ] )
+ 		   [ AC_MSG_FAILURE( MPI is required ) ] )
           ],
-	[ AM_CONDITIONAL(ENABLE_COMM_HUB_MPI, false) ] )
+	AM_CONDITIONAL([ENABLE_COMM_HUB_MPI], [test "x$enable_mpi_hub" != "xno"]))
 
 #################################################################################
 # CHOICE OF COLLECTIVE COMMUNICATIONS

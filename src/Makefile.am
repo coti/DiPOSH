@@ -47,13 +47,13 @@ libshmem_la_SOURCES = shmem_accessible.cpp   shmem_lock.cpp 		\
 
 libshmem_la_SOURCES += posh_launcher.h
 if ENABLE_LAUNCHERLOCAL
-	libshmem_la_SOURCES += posh_launcher_sm.cpp posh_launcher_sm.h
+libshmem_la_SOURCES += posh_launcher_sm.cpp posh_launcher_sm.h
 endif
 if ENABLE_LAUNCHERMPI
-	libshmem_la_SOURCES += posh_launcher_mpi.cpp posh_launcher_mpi.h
+libshmem_la_SOURCES += posh_launcher_mpi.cpp posh_launcher_mpi.h
 endif
 if ENABLE_LAUNCHERPADICO
-	libshmem_la_SOURCES += posh_launcher_padico.cpp posh_launcher_padico.h
+libshmem_la_SOURCES += posh_launcher_padico.cpp posh_launcher_padico.h
 endif
 
 #################################################################################
@@ -64,19 +64,19 @@ libshmem_la_SOURCES += posh_neighbor.h posh_heap.h posh_communication.h
 libshmem_la_SOURCES += posh_sm.cpp posh_sm.h
 
 if ENABLE_COMM_TCP
-	libshmem_la_SOURCES +=ked_tcp.cpp ked_tcp.h posh_tcp.cpp posh_tcp.h shmem_tcp.cpp shmem_tcp.h
+libshmem_la_SOURCES +=ked_tcp.cpp ked_tcp.h posh_tcp.cpp posh_tcp.h shmem_tcp.cpp shmem_tcp.h
 endif
 if ENABLE_COMM_MPI
-	libshmem_la_SOURCES += posh_mpi.cpp posh_mpi.h
+libshmem_la_SOURCES += posh_mpi.cpp posh_mpi.h
 endif
 if ENABLE_COMM_NMAD
-	libshmem_la_SOURCES += posh_nmad.cpp posh_nmad.h
+libshmem_la_SOURCES += posh_nmad.cpp posh_nmad.h
 endif
 if ENABLE_COMM_KNEM
-	libshmem_la_SOURCES += posh_knem.cpp posh_knem.h
+libshmem_la_SOURCES += posh_knem.cpp posh_knem.h
 endif
 if ENABLE_COMM_HUB_MPI
-	libshmem_la_SOURCES += posh_hub.cpp posh_hub.h
+libshmem_la_SOURCES += posh_hub.cpp posh_hub.h
 endif
 
 #################################################################################
