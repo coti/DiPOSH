@@ -26,6 +26,7 @@ AC_CONFIG_MACRO_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 AM_PROG_AR
 LT_INIT
+AC_ENABLE_SHARED
 
 # CHECK FOR PROGRAMS
 
@@ -242,6 +243,15 @@ AC_ARG_ENABLE([nmad-comm],
        	  CPPFLAGS+="-DNMADCHANNEL `pkg-config --cflags nmad` -D_WITH_NMAD  -DDISTRIBUTED_POSH " 
           LDFLAGS += `pkg-config --libs nmad` ],
 	[ AM_CONDITIONAL(ENABLE_COMM_NMAD, false) ] )
+
+AC_ARG_ENABLE([mpi-hub],
+	AS_HELP_STRING([--enable-mpi-hub], [Enable hub communications using MPI [default=no]]),
+	[ AM_CONDITIONAL(ENABLE_COMM_HUB_MPI, true)
+       	  CPPFLAGS+=" -DMPIHUBCHANNEL -DDISTRIBUTED_POSH "
+	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ],
+		   [ AC_MSG_FAILURE( MPI is required ) ] )
+          ],
+	[ AM_CONDITIONAL(ENABLE_COMM_HUB_MPI, false) ] )
 
 #################################################################################
 # CHOICE OF COLLECTIVE COMMUNICATIONS

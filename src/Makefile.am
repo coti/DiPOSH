@@ -75,6 +75,9 @@ endif
 if ENABLE_COMM_KNEM
 	libshmem_la_SOURCES += posh_knem.cpp posh_knem.h
 endif
+if ENABLE_COMM_HUB_MPI
+	libshmem_la_SOURCES += posh_hub.cpp posh_hub.h
+endif
 
 #################################################################################
 # Fault tolerance

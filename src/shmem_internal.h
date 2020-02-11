@@ -47,6 +47,9 @@
 #ifdef _WITH_NMAD
 #include "posh_nmad.h"
 #endif // _WITH_NMAD
+#ifdef _WITH_HUB
+#include "posh_hub.h"
+#endif // _WITH_HUB
 
 //#include <boost/stacktrace.hpp>
 
@@ -57,7 +60,7 @@
 using namespace boost::interprocess;
 
 
-#if defined( DISTRIBUTED_POSH ) && defined( MPICHANNEL )
+#if defined( DISTRIBUTED_POSH ) && ( defined( MPICHANNEL ) || defined( MPIHUBCHANNEL ) )
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 using namespace boost::mpi;
@@ -110,6 +113,9 @@ class MeMyselfAndI {
 #ifdef _WITH_NMAD
     NMADendpoint_t myEndpointNMAD;
 #endif
+#ifdef _WITH_HUB
+    HUBendpoint_t myEndpointHub;
+#endif
 
 #ifdef CHANDYLAMPORT
     bool _checkpointing;
@@ -119,7 +125,7 @@ class MeMyselfAndI {
 
    public:
 
-#ifdef MPICHANNEL
+#if defined( MPICHANNEL ) || defined( MPIHUBCHANNEL )
     MPI_Win window;
     mpi::environment env;
     mpi::communicator world;
@@ -143,7 +149,7 @@ class MeMyselfAndI {
         this->hostname = std::string( mybighostname );
         this->listen_socket = -1;
 
-#ifdef MPICHANNEL
+#if defined( MPICHANNEL ) || defined( MPIHUBCHANNEL )
         mpi::environment env( mpi::threading::funneled );
         std::cout << "thread level: " << this->env.thread_level() << std::endl;
 #endif

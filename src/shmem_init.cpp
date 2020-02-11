@@ -22,11 +22,11 @@
 #include "shmem_internal.h"
 #include "shmem_constants.h"
 #ifdef DISTRIBUTED_POSH
-#ifdef MPICHANNEL
+#if defined( MPICHANNEL ) || defined( MPIHUBCHANNEL )
 #include "posh_mpi.h"
 #else
 #include "shmem_tcp.h"
-#endif // MPICHANNEL
+#endif // MPICHANNEL || MPIHUBCHANNEL
 #endif // DISTRIBUTED_POSH
 //#include <pthread.h>
 

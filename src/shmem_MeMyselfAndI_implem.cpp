@@ -351,6 +351,25 @@ NMADendpoint_t* MeMyselfAndI::getMyEndpointNMAD(){
 
 #endif // _WITH_NMAD
 
+#ifdef _WITH_HUB
+
+void MeMyselfAndI::initNeighborHub( int neighborrank, ContactInfo_Hub& ci ) {
+
+    TODO
+    
+    /*    this->neighbors[neighborrank].comm_type = TYPE_NMAD;
+    this->neighbors[neighborrank].communications = new Communication_NMAD_t();
+    this->neighbors[neighborrank].communications->setContactInfo( ci );*/
+    
+}
+
+HUBendpoint_t* MeMyselfAndI::getMyEndpointHub(){
+    return &(this->myEndpointHub);
+}
+
+
+#endif // _WITH_HUB
+
 void MeMyselfAndI::communicationInit( char* comm_channel ){
 
     myHeap.setupSymmetricHeap(); // should be in the SM component
