@@ -25,6 +25,7 @@
 int shmem_sm_put( int pe, void* target, const void* source, size_t size ) {
     void* buf =  _getRemoteAddr( target, pe );
     _shmem_memcpy( buf,  source, size );
+    return 0;
 }
 
 int shmem_sm_get( int pe, void* target, const void* source, size_t size ) {
@@ -32,6 +33,7 @@ int shmem_sm_get( int pe, void* target, const void* source, size_t size ) {
     const void* buf = const_cast<const void*>(_getRemoteAddr( source, pe ) );
     /* Pull the data here */
     _shmem_memcpy( reinterpret_cast<void *>( target ), buf, size );
+    return 0;
 }
 
 
