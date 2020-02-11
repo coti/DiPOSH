@@ -110,6 +110,6 @@ shmem_s2sc_LDFLAGS = -no-undefined
 
 dist_bin_SCRIPTS = shmemcc
 
-include_HEADERS=shmem.h
+include_HEADERS=shmem.h shmem_constants.h
 
 ACLOCAL_AMFLAGS=-I ../config 
