@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2020 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -18,6 +18,8 @@
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdlib>
+
 #include "posh_launcher_mpi.h"
 
 #define OMPI_ENV_VARIABLE "OMPI_UNIVERSE_SIZE"
@@ -29,7 +31,7 @@ bool isMPI( void ){
     
     /* OpenMPI */
     
-    size = getenv( OMPI_ENV_VARIABLE );
+    size = std::getenv( OMPI_ENV_VARIABLE );
     if( NULL != size ) {
 #if _DEBUG
         std::cout << "Started with MPI" << std::endl;
@@ -39,7 +41,7 @@ bool isMPI( void ){
 
     /* MPICH (not tested) */
     
-    size = getenv( MPICH_ENV_VARIABLE );
+    size = std::getenv( MPICH_ENV_VARIABLE );
     if( NULL != size ) {
 #if _DEBUG
         std::cout << "Started with MPI" << std::endl;
