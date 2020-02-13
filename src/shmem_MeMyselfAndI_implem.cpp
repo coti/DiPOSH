@@ -365,7 +365,7 @@ void MeMyselfAndI::initNeighborHub( int neighborrank ) {
 
     char* _name;
     _name = myHeap.buildHeapName( neighborrank );
-    if( /* false */ true == _sharedMemEsists( _name ) ) { // uncomment for debug DEBUG
+    if(  false /* true == _sharedMemEsists( _name ) */ ) { // uncomment for debug DEBUG
         this->neighbors[neighborrank].comm_type = TYPE_SM;
         this->neighbors[neighborrank].communications = new Communication_SM_t();    
         this->neighbors[neighborrank].communications->init( neighborrank );

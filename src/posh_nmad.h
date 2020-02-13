@@ -92,6 +92,8 @@ private:
     void shmem_nmad_init( void ){
         ;;
     }
+    int finalize(){} // TODO
+    
     nm_gate_t getGate( void ) { return this->p_gate; }
     nm_gate_t getGate( int& peer ) {   nm_gate_t g;   nm_launcher_get_gate( peer, &g ); return g; }
     void setGate( nm_gate_t& g ) { this->p_gate = g; }

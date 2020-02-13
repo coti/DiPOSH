@@ -304,6 +304,7 @@ if( rank == 0 ) {
     printf( "The end %d\n", EXIT_SUCCESS );
 }
 
+ shmem_finalize();
   // return EXIT_SUCCESS;
   exit( 0 ) ;
 }

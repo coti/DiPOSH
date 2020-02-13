@@ -234,6 +234,8 @@ class MeMyselfAndI {
     void initNeighborNMAD( int, ContactInfo_NMAD& );
     NMADendpoint_t* getMyEndpointNMAD();
 #endif
+
+    Endpoint_t* getMyEndpoint() { return this->myEndpoint; }
     
 #ifdef DISTRIBUTED_POSH
     void setMyContactInfo( int, uint32_t, uint16_t );

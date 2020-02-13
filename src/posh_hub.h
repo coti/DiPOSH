@@ -31,12 +31,11 @@ namespace mpi = boost::mpi;
 #define TAG_PUT_DONE  3
 #define TAG_GET       4
 #define TAG_DATA      16
+#define TAG_FINAL     1664
 
 //int shmem_hub_put( int, void*, const void*, size_t );
 //int shmem_hub_get( int, void*, const void*, size_t );
 //void shmem_hub_init( void );
-
-void shmem_hub_finalize( void );
 
 class ContactInfo_hub  : public ContactInfo  {
 
@@ -82,6 +81,7 @@ public:
     /* TODO */
     void init_end();
     void init() {init_end(); }
+    int finalize( void );
     
     ContactInfo* getMyContactInfo(){
         return &(this->ci);

@@ -69,6 +69,7 @@ public:
     /* TODO */
     void init_end(){}
     void init(){}
+    int finalize(){}
     
     ContactInfo* getMyContactInfo(){
         return &(this->ci);

@@ -36,6 +36,7 @@
 /* 8.1.1. Initializes OpenSHMEM. */
 
 void start_pes( int ); // OK
+int shmem_finalize( void ); // ADDED
 
 /***************************/
 /*** 8.2. Query Routines ***/

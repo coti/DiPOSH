@@ -178,5 +178,8 @@ int shmem_finalize(){
     /* todo */
     /* exit thread */
     /* close sockets */
+
+    myInfo.getMyEndpoint()->finalize();
+    
     return 0;
 }

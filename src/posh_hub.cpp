@@ -121,6 +121,14 @@ void Endpoint_hub_t::init_end( ) {
     //    std::cout << myInfo.getRank() << " local hub " << this->local_comm.size() - 1 << std::endl;
 }
 
+int Endpoint_hub_t::finalize( ) {
+    /* Send a message to my hub */
+    this->local_comm.send( local_comm.size()-1, TAG_FINAL, this->rank );
+
+    /* We don't need to free the communicators, Boost will do it. */
+    /* We don't need to call MPI_Finalize either. */
+}
+
 int Communication_hub_t::posh__put(  void* target, const void* source, size_t size, int pe ){
 
     /* We shouldn't have to deal with local communications
@@ -171,9 +179,3 @@ int Communication_hub_t::posh__get(  void* local, const void* target, size_t siz
     return 0;
 }
 
-void shmem_hub_finalize(){
-
-
-    /*    TODO   */
-
-}

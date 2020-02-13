@@ -87,6 +87,7 @@ public:
     ContactInfo* getMyContactInfo(){
         return &(this->ci);
     }
+    int finalize(){ /* we don't need to call MPI_Finalize */ } 
 };
 
 class Communication_MPI_t : public Communication_t, public MPIendpoint {

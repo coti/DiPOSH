@@ -73,7 +73,7 @@ class ContactInfo_KNEM : public ContactInfo {
 };                                   
 
 
-class KNEMendpoint_t{
+class KNEMendpoint_t : public Endpoint_t{
  protected:
     knem_cookie_t cookie;
     int knem_fd;
@@ -89,6 +89,7 @@ class KNEMendpoint_t{
         this->knem_fd = sd;
     }
     void shmem_knem_init( void );
+    int finalize(){} // TODO
 };
 
 class Communication_KNEM_t : public Communication_t, public KNEMendpoint_t {
