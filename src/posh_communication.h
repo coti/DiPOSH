@@ -26,6 +26,7 @@
 class Endpoint_t {
 public:
     virtual void init_end( void ) = 0;
+    virtual void init( void ) = 0;
     virtual ContactInfo* getMyContactInfo( void ) = 0;
 };
 

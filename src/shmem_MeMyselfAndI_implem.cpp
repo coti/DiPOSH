@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2014-2019 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2020 LIPN - Universite Paris 13
+ *                              - Université Sorbonne Paris Nord
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -39,6 +40,9 @@
 
 #ifdef MPICHANNEL
 #include "posh_mpi.h"
+#endif
+#ifdef MPIHUBCHANNEL
+#include "posh_hub.h"
 #endif
 #include "posh_tcp.h"
 #include "posh_heap.h"
@@ -207,7 +211,8 @@ void MeMyselfAndI::findAndSetPidRoot () {
     } else {
         rootpid = getenv( VAR_PID_ROOT );
         if( NULL == rootpid ) {
-            std::cerr << "Could not retrieve the process id of the root process" << std::endl;
+            /* Not necessarily a problem (only in non-distributed mode) */
+            //            std::cerr << "Could not retrieve the process id of the root process" << std::endl;
             return;
         }
     }
@@ -291,6 +296,7 @@ void MeMyselfAndI::initNeighborMPI( int neighborrank ) {
 #endif // MPICHANNEL
 
 
+#ifdef _WITH_TCP
 void MeMyselfAndI::initNeighborTCP( int neighborrank, ContactInfo_TCP& ci ) {
 
     //    this->neighbors[neighborrank].channels.push_back( Communication_TCP_t() );
@@ -307,7 +313,6 @@ void MeMyselfAndI::initNeighborTCP( int neighborrank, ContactInfo_TCP& ci ) {
 #endif // _DEBUG
     }
 
-
  /*
     this->neighbors[neighborrank].comm_type = TYPE_TCP;
     // this->neighbors[neighborrank].comm_channel.tcp_channel.socket = -1;;
@@ -319,6 +324,7 @@ void MeMyselfAndI::initNeighborTCP( int neighborrank, ContactInfo_TCP& ci ) {
 #endif // _DEBUG
     */
 }
+#endif // _WITH_TCP
 
 #ifdef _WITH_KNEM
 void MeMyselfAndI::initNeighborKNEM( int neighborrank, ContactInfo_KNEM& ci ) {
@@ -351,24 +357,38 @@ NMADendpoint_t* MeMyselfAndI::getMyEndpointNMAD(){
 
 #endif // _WITH_NMAD
 
-#ifdef _WITH_HUB
+#ifdef MPIHUBCHANNEL
 
-void MeMyselfAndI::initNeighborHub( int neighborrank, ContactInfo_Hub& ci ) {
+void MeMyselfAndI::initNeighborHub( int neighborrank ) {
 
-    TODO
-    
-    /*    this->neighbors[neighborrank].comm_type = TYPE_NMAD;
-    this->neighbors[neighborrank].communications = new Communication_NMAD_t();
-    this->neighbors[neighborrank].communications->setContactInfo( ci );*/
-    
+    /* is this guy on the same node as me? */
+
+    char* _name;
+    _name = myHeap.buildHeapName( neighborrank );
+    if( /* false */ true == _sharedMemEsists( _name ) ) { // uncomment for debug DEBUG
+        this->neighbors[neighborrank].comm_type = TYPE_SM;
+        this->neighbors[neighborrank].communications = new Communication_SM_t();    
+        this->neighbors[neighborrank].communications->init( neighborrank );
+#ifdef _DEBUG 
+        std::cout << "Init neighbor  " << neighborrank << " SM" << std::endl;
+#endif // _DEBUG        
+    } else { 
+        this->neighbors[neighborrank].comm_type = TYPE_HUB;
+        this->neighbors[neighborrank].communications = new Communication_hub_t();
+        //    std::cout << "Init HUB neighbor " << neighborrank << std::endl;
+#ifdef _DEBUG 
+        std::cout << "Init neighbor  " << neighborrank << " HUB" << std::endl;
+#endif // _DEBUG
+    }
+    free( _name );
 }
 
-HUBendpoint_t* MeMyselfAndI::getMyEndpointHub(){
+Endpoint_hub_t* MeMyselfAndI::getMyEndpointHub(){
     return &(this->myEndpointHub);
 }
 
 
-#endif // _WITH_HUB
+#endif // MPIHUBCHANNEL
 
 void MeMyselfAndI::communicationInit( char* comm_channel ){
 
@@ -376,16 +396,19 @@ void MeMyselfAndI::communicationInit( char* comm_channel ){
 
 #ifdef DISTRIBUTED_POSH
     if( NULL == comm_channel ) {
-#ifdef MPICHANNEL
-        this->myEndpoint.init();
-#else
-        this->myEndpoint.init( );        
+        // TODO improve this!!
+        this->myEndpoint = &( this->myEndpointHub );
+        
+        this->myEndpoint->init_end();
+#ifdef _WITH_TCP
         /* This must be done only once the communication thread is up and initialized */
         while( ! this->getMyContactInfoP()->isReady() ){
             ;;
         }
-#endif // MPICHANNEL
-    } else { /* FIXME: use an object to stop using dirty things like this */
+#endif // _WITH_TCP
+    }
+    else { /* FIXME: use an object to stop using dirty things like this */
+#ifdef _WITH_TCP
         if( 0 == strcmp( comm_channel, "TCP" ) ) {
             this->myEndpoint.init( );        
             /* This must be done only once the communication thread is up and initialized */
@@ -393,19 +416,28 @@ void MeMyselfAndI::communicationInit( char* comm_channel ){
                 ;;
             }
         }
+#endif // _WITH_TCP
 #ifdef MPICHANNEL
         if( 0 == strcmp( comm_channel, "MPI" ) ) {
-            this->myEndpoint.init();
+            this->myEndpoint = new MPIendpoint();
+            this->myEndpoint->init_end();
       }
 #endif // MPICHANNEL
 #ifdef _WITH_KNEM
         if( 0 == strcmp( comm_channel, "KNEM" ) ) {
-            this->myEndpoint.init();
+            this->myEndpoint->init();
         }
 #endif // _WITH_KNEM
 #ifdef _WITH_NMAD
         if( 0 == strcmp( comm_channel, "NMAD" ) ) {
-            this->myEndpoint.init();
+            this->myEndpoint->init();
+        }
+#endif // _WITH_NMAD
+#ifdef MPIHUBCHANNEL
+        if( 0 == strcmp( comm_channel, "HUB" ) ) {
+            std::cout << "INIT HUB" << std::endl;
+            this->myEndpoint = new Endpoint_hub_t();
+            this->myEndpoint->init_end();
         }
 #endif // _WITH_NMAD
     }
@@ -441,6 +473,17 @@ void MeMyselfAndI::initNeighbors( int nb, char* comm_channel ) {
         shmem_mpi_exchange_ci( ci_all );
     }
 #endif // MPICHANNEL
+    
+#ifdef MPIHUBCHANNEL
+    if( distributed ) {
+        //        std::cout << "INIT HUB NEIGHBORS" << std::endl;
+        for( i = 0 ; i < myInfo.getSize() ; i++ ) {
+            if( myInfo.getRank() != i ) {
+                initNeighborHub( i );
+            }
+        }
+    }
+#endif // MPIHUBCHANNEL
 
 #endif // DISTRIBUTED_POSH 
 
@@ -486,7 +529,7 @@ std::string packMyContactInformation(){
 
 #ifdef DISTRIBUTED_POSH
 
-//#ifndef MPICHANNEL
+#ifdef _WITH_TCP
 void MeMyselfAndI::setMyContactInfo( int rank, uint32_t addr, uint16_t port ){
     /* The hostname MUST be initialized somewhere else */
 
@@ -503,6 +546,7 @@ void MeMyselfAndI::setMyContactInfo( int rank, uint32_t addr, uint16_t port ){
     std::cout << "My port: " << port << std::endl;
 #endif // _DEBUG
 }
+#endif // _WITH_TCP
 
 void MeMyselfAndI::setMyContactInfo( int rank ){
     /* MPI version */

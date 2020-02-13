@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020 LIPN - Universite Paris 13
+ * Copyright (c) 2020 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -23,14 +23,22 @@
 
 #include "posh_contactinfo.h"
 
-int shmem_hub_put( int, void*, const void*, size_t );
-int shmem_hub_get( int, void*, const void*, size_t );
+#include <boost/mpi/communicator.hpp>
+namespace mpi = boost::mpi;
+
+#define TAG_DECLARE   1
+#define TAG_PUT       2
+#define TAG_PUT_DONE  3
+#define TAG_DATA      4
+
+//int shmem_hub_put( int, void*, const void*, size_t );
+//int shmem_hub_get( int, void*, const void*, size_t );
 //void shmem_hub_init( void );
 
 class ContactInfo_hub  : public ContactInfo  {
 
 public:
-    ContactInfo_HUB(){
+    ContactInfo_hub(){
         this->ready = false;
     }
 
@@ -60,14 +68,17 @@ class HUBneighbor_t{
     managed_shared_memory remoteHeap;
 };
 
+
 class Endpoint_hub_t : public Endpoint_t {
 protected:
     int rank;
-    ContactInfo_hub ci;
-    
+    ContactInfo_hub ci; // unused
+    static mpi::communicator local_comm; // class attribute
+
 public:    
     /* TODO */
-    void init_end(){}
+    void init_end();
+    void init() {init_end(); }
     
     ContactInfo* getMyContactInfo(){
         return &(this->ci);
@@ -78,7 +89,7 @@ class Communication_hub_t : public Communication_t, public HUBneighbor_t, public
 
 protected:
     int rank;
-    ContactInfo_HUB ci;
+    ContactInfo_hub ci; // unused
     
  public:
 
@@ -88,13 +99,8 @@ protected:
     void setContactInfo( ContactInfo& ci ) {
         // nothing
     }
-    int posh__get(  void* target, const void* source, size_t size, int pe ){
-        return shmem_hub_get( pe, target, source, size );
-    }
-    int posh__put(  void* target, const void* source, size_t size, int pe ){
-        std::cout << "put" << std::endl;
-        return shmem_hub_put( pe, target, source, size );
-    }
+    int posh__get(  void* target, const void* source, size_t size, int pe );
+    int posh__put(  void* target, const void* source, size_t size, int pe );
 
 };
 

@@ -70,14 +70,17 @@ template<class T>void shmem_template_gather_flat( T* buffer, const T* myelem, si
            }
 #endif
 
-       } else {
-           coll->inProgress = true;
+       }
+#if 0
+       else { // should not happen
+                      coll->inProgress = true;
            coll->type = _SHMEM_COLL_GATHER;
            coll->ptr = _shmallocFake( myInfo.getSize() * nb * sizeof( T ) );
 #if defined( _SAFE ) || defined( _DEBUG )
            coll->space = myInfo.getSize() * nb * sizeof( T );
 #endif
-       }
+}
+#endif
 
         /* put my own element in the buffer */
         _shmem_memcpy( buffer, myelem, nb*sizeof( T ) );
@@ -101,6 +104,7 @@ template<class T>void shmem_template_gather_flat( T* buffer, const T* myelem, si
         named_mtx.lock(); 
         Collective_t* remote_coll = static_cast<Collective_t *>( _getRemoteAddr( coll, root ) );
 
+#if 0 // should not happen
         if( false == remote_coll->inProgress ) {
 #ifdef _DEBUG
             std::cout << myInfo.getRank() << "] Root process " << root << " has not entered the collective operation yet." << std::endl;
@@ -116,6 +120,7 @@ template<class T>void shmem_template_gather_flat( T* buffer, const T* myelem, si
             remote_coll->space =  myInfo.getSize() * nb * sizeof( T );
 #endif
         }
+#endif
         named_mtx.unlock(); 
 
         shmem_int_finc( &(myInfo.getCollective()->cnt), root );

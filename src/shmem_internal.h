@@ -39,7 +39,9 @@
 
 #include "posh_launcher.h"
 
+#ifdef _WITH_TCP
 #include "posh_tcp.h" // this will go away with the TCPendpoint_t
+#endif // _WITH_TCP
 //#include "posh_heap.h"
 #ifdef _WITH_KNEM
 #include "posh_knem.h"
@@ -47,7 +49,7 @@
 #ifdef _WITH_NMAD
 #include "posh_nmad.h"
 #endif // _WITH_NMAD
-#ifdef _WITH_HUB
+#ifdef MPIHUBCHANNEL
 #include "posh_hub.h"
 #endif // _WITH_HUB
 
@@ -96,16 +98,20 @@ class MeMyselfAndI {
     //    managed_shared_memory* neighbors;
     Neighbor_t* neighbors; /* FIXME Joel said to use a vector */
 
+#ifdef _WITH_TCP
     int tcp_port;
     int listen_socket;
+#endif // _WITH_TCP
     std::string hostname;
-
+    
     Launcher_t *rte;     /* Whoever started me is here */
     
     //   std::vector<ContactInfo> myContactInfo;// TODO
     ContactInfo* myContactInfo;
-#ifdef DISTRIBUTED_POSH
-    TCPendpoint_t myEndpoint; // TODO put this behind an interface
+
+    Endpoint_t* myEndpoint; // should be able to have several endpoints there
+#if _WITH_TCP
+    TCPendpoint_t myEndpointTCP; // TODO put this behind an interface
 #endif
 #ifdef _WITH_KNEM
     KNEMendpoint_t myEndpointKNEM;
@@ -113,8 +119,8 @@ class MeMyselfAndI {
 #ifdef _WITH_NMAD
     NMADendpoint_t myEndpointNMAD;
 #endif
-#ifdef _WITH_HUB
-    HUBendpoint_t myEndpointHub;
+#ifdef MPIHUBCHANNEL
+    Endpoint_hub_t myEndpointHub;
 #endif
 
 #ifdef CHANDYLAMPORT
@@ -147,8 +153,10 @@ class MeMyselfAndI {
         mybighostname[1023] = '\0';
         gethostname( mybighostname, 1024 );
         this->hostname = std::string( mybighostname );
+#ifdef _WITH_TCP
         this->listen_socket = -1;
-
+#endif // _WITH_TCP
+        
 #if defined( MPICHANNEL ) || defined( MPIHUBCHANNEL )
         mpi::environment env( mpi::threading::funneled );
         std::cout << "thread level: " << this->env.thread_level() << std::endl;
@@ -203,7 +211,13 @@ class MeMyselfAndI {
     void communicationInit( char* );
 
     void initNeighborSM( int );
+    std::string getmyhostname( void );
+#ifdef _WITH_TCP
     void initNeighborTCP( int, ContactInfo_TCP& );
+    int getmyTCPport( void );
+    void setMyTCPthreadID( boost::thread& );
+    boost::thread* getMyTCPthreadID( void );
+#endif // _WITH_TCP
 #ifdef _WITH_KNEM /* FIXME: use an object */
     void initNeighborKNEM( int, ContactInfo_KNEM& );
     KNEMendpoint_t* getMyEndpointKNEM();
@@ -212,15 +226,15 @@ class MeMyselfAndI {
 #ifdef MPICHANNEL
     void initNeighborMPI( int );
 #endif
+#ifdef MPIHUBCHANNEL
+    void initNeighborHub( int );
+    Endpoint_hub_t* getMyEndpointHub();
+#endif
 #ifdef _WITH_NMAD
     void initNeighborNMAD( int, ContactInfo_NMAD& );
     NMADendpoint_t* getMyEndpointNMAD();
 #endif
     
-    std::string getmyhostname( void );
-    int getmyTCPport( void );
-    void setMyTCPthreadID( boost::thread& );
-    boost::thread* getMyTCPthreadID( void );
 #ifdef DISTRIBUTED_POSH
     void setMyContactInfo( int, uint32_t, uint16_t );
     void setMyContactInfo( int );

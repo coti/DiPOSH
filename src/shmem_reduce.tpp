@@ -656,6 +656,7 @@ template <class T, class V>void shmem_template_binarytree_reduce( T* target, T* 
 #endif
                     usleep( SPIN_TIMER );
                 }
+#if 0 // should not happen
                 if( false == remote_coll->inProgress ) {
                     remote_coll->ptr = _remote_shmallocFake( myBuddy, nelems * sizeof( T ) );
                     remote_coll->type = _SHMEM_COLL_REDUCE;
@@ -665,6 +666,7 @@ template <class T, class V>void shmem_template_binarytree_reduce( T* target, T* 
                     remote_coll->space =  nelems * sizeof( T );
 #endif
                 }
+#endif
 
                 /* has anyone written over there already? */
                 int cnt;

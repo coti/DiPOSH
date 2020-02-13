@@ -258,7 +258,7 @@ AC_ARG_ENABLE([mpi-hub],
 	AS_HELP_STRING([--enable-mpi-hub], [Enable hub communications using MPI [default=no]]),
 	[ AM_CONDITIONAL(ENABLE_COMM_HUB_MPI, true)
       	  CPPFLAGS+=" -DMPIHUBCHANNEL -DDISTRIBUTED_POSH "
-	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++  ; LDFLAGS=" ${LDFLAGS}  -lboost_mpi "],
+	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++  ; LDFLAGS=" ${LDFLAGS}  -lboost_mpi -lrt "],
  		   [ AC_MSG_FAILURE( MPI is required ) ] )
           ],
 	AM_CONDITIONAL([ENABLE_COMM_HUB_MPI], [test "x$enable_mpi_hub" != "xno"]))

@@ -25,7 +25,7 @@
 #include "posh_mpi.h"
 #endif// MPICHANNEL
 #if defined(DISTRIBUTED_POSH) 
-#include "shmem_tcp.h"
+//#include "shmem_tcp.h"
 #endif // DISTRIBUTED_POSH
 #include "perf.h"
 

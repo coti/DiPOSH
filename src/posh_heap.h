@@ -24,6 +24,8 @@
 #include "posh_sm.h"
 //#include "shmem_internal.h"
 
+#define HEAPBASENAME "POSH_SymmetricHeap_"
+
 class SymmetricHeap{
  private:
     char* heapBaseName;
@@ -43,7 +45,7 @@ class SymmetricHeap{
    /* Constructor and destructor */
 
     SymmetricHeap(  ) {
-        asprintf( &( this->heapBaseName ), "POSH_SymmetricHeap_" );
+        asprintf( &( this->heapBaseName ), HEAPBASENAME );
         this->heapName = NULL;
         this->heapSize = _SHMEM_DEFAULT_HEAP_SIZE;
     }

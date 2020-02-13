@@ -18398,7 +18398,7 @@ as_fn_error $? "MPI is required
 See \`config.log' for more details" "$LINENO" 5; }
         :
 else
-         CC=mpicc ; CXX=mpic++ ; LD=mpic++  ; LDFLAGS=" ${LDFLAGS}  -lboost_mpi "
+         CC=mpicc ; CXX=mpic++ ; LD=mpic++  ; LDFLAGS=" ${LDFLAGS}  -lboost_mpi -lrt "
         :
 fi
 

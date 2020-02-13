@@ -68,6 +68,7 @@ protected:
 public:    
     /* TODO */
     void init_end(){}
+    void init(){}
     
     ContactInfo* getMyContactInfo(){
         return &(this->ci);

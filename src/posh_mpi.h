@@ -84,7 +84,6 @@ public:
     void init_end( ){
         shmem_mpi_init();
     }
-
     ContactInfo* getMyContactInfo(){
         return &(this->ci);
     }
