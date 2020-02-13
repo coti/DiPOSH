@@ -112,7 +112,7 @@ extern std::ostream& operator<< ( std::ostream&, ContactInfo_TCP& );
 
 void shmem_tcp_init( void );
 
-class TCPendpoint_t {
+class TCPendpoint_t : public Endpoint_t {
 
 private:
     void shmem_tcp_init();
@@ -134,6 +134,7 @@ public:
     void init(int rank ){ // TODO really ?
         shmem_tcp_init();
     }
+    int finalize(){} // TODO
 
     int getmyTCPport( void );
     void setMyTCPthreadID( boost::thread& );
