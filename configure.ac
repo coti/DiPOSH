@@ -1,6 +1,7 @@
 #
 #
-# Copyright (c) 2014-2019 LIPN - Universite Paris 13
+# Copyright (c) 2014-2020 LIPN - Universite Paris 13
+#                              - Universite Sorbonne Paris Nord
 #                    All rights reserved.
 #
 # This file is part of POSH.
@@ -162,7 +163,8 @@ AC_ARG_ENABLE([launcher-mpi],
 	AS_HELP_STRING([--enable-launcher-mpi], [Enable MPI launcher [default=disabled]]),
 	[ AM_CONDITIONAL(ENABLE_LAUNCHERMPI, true)
           CPPFLAGS+="-DMPILAUNCHER  -DDISTRIBUTED_POSH "
-	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ],
+	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ; LDFLAGS=" ${LDFLAGS}  -lboost_mpi "
+],
 		   [ AC_MSG_FAILURE( MPI is required ) ] )
       	],
 	[ AM_CONDITIONAL(ENABLE_LAUNCHERMPI, false) ] )
@@ -233,14 +235,14 @@ AC_ARG_ENABLE([knem-comm],
 AC_ARG_ENABLE([tcp-comm],
 	AS_HELP_STRING([--enable-tcp-comm], [Enable TCP communications (slow) [default=no]]),
 	[ AM_CONDITIONAL(ENABLE_COMM_TCP, true)
-       	  CPPFLAGS+=" -DDISTRIBUTED_POSH  "],
+       	  CPPFLAGS+=" -DDISTRIBUTED_POSH   -D_WITH_TCP "],
 	[ AM_CONDITIONAL(ENABLE_COMM_TCP, false) ] )
 
 AC_ARG_ENABLE([mpi-comm],
 	AS_HELP_STRING([--enable-mpi-comm], [Enable MPI communications [default=no]]),
 	[ AM_CONDITIONAL(ENABLE_COMM_MPI, true)
        	  CPPFLAGS+=" -DMPICHANNEL -DDISTRIBUTED_POSH "
-	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ],
+	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ; LDFLAGS=" ${LDFLAGS}  -lboost_mpi " ],
 		   [ AC_MSG_FAILURE( MPI is required ) ] )
           ],
 	[ AM_CONDITIONAL(ENABLE_COMM_MPI, false) ] )
@@ -256,7 +258,7 @@ AC_ARG_ENABLE([mpi-hub],
 	AS_HELP_STRING([--enable-mpi-hub], [Enable hub communications using MPI [default=no]]),
 	[ AM_CONDITIONAL(ENABLE_COMM_HUB_MPI, true)
       	  CPPFLAGS+=" -DMPIHUBCHANNEL -DDISTRIBUTED_POSH "
-	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++ ],
+	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++  ; LDFLAGS=" ${LDFLAGS}  -lboost_mpi "],
  		   [ AC_MSG_FAILURE( MPI is required ) ] )
           ],
 	AM_CONDITIONAL([ENABLE_COMM_HUB_MPI], [test "x$enable_mpi_hub" != "xno"]))
@@ -322,6 +324,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
         Makefile
         src/Makefile
+        src/hub_mpi/Makefile
 ])
 AC_OUTPUT
 

@@ -16,7 +16,8 @@
 
 #
 #
-# Copyright (c) 2014-2019 LIPN - Universite Paris 13
+# Copyright (c) 2014-2020 LIPN - Universite Paris 13
+#                              - Universite Sorbonne Paris Nord
 #                    All rights reserved.
 #
 # This file is part of POSH.
@@ -117,6 +118,14 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@ENABLE_LAUNCHERLOCAL_TRUE@am__append_1 = posh_launcher_sm.cpp posh_launcher_sm.h
+@ENABLE_LAUNCHERMPI_TRUE@am__append_2 = posh_launcher_mpi.cpp posh_launcher_mpi.h
+@ENABLE_LAUNCHERPADICO_TRUE@am__append_3 = posh_launcher_padico.cpp posh_launcher_padico.h
+@ENABLE_COMM_TCP_TRUE@am__append_4 = ked_tcp.cpp ked_tcp.h posh_tcp.cpp posh_tcp.h shmem_tcp.cpp shmem_tcp.h
+@ENABLE_COMM_MPI_TRUE@am__append_5 = posh_mpi.cpp posh_mpi.h
+@ENABLE_COMM_NMAD_TRUE@am__append_6 = posh_nmad.cpp posh_nmad.h
+@ENABLE_COMM_KNEM_TRUE@am__append_7 = posh_knem.cpp posh_knem.h
+@ENABLE_COMM_HUB_MPI_TRUE@am__append_8 = posh_hub.cpp posh_hub.h
 bin_PROGRAMS = spawn$(EXEEXT) shmem_s2sc$(EXEEXT)
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -168,12 +177,38 @@ am__uninstall_files_from_dir = { \
   }
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libshmem_la_LIBADD =
+am__libshmem_la_SOURCES_DIST = shmem_accessible.cpp shmem_lock.cpp \
+	shmem_alloc.cpp shmem_MeMyselfAndI_implem.cpp shmem_atomic.cpp \
+	shmem_collect.cpp shmem_barrier.cpp shmem_ptr.cpp \
+	shmem_bcast.cpp shmem_put.cpp shmem_collectives.cpp \
+	shmem_SymmetricHeap_Implem.cpp shmem_get.cpp shmem_sync.cpp \
+	shmem_init.cpp shmem_reduce.cpp shmem_utils.cpp \
+	posh_launcher.h posh_launcher_sm.cpp posh_launcher_sm.h \
+	posh_launcher_mpi.cpp posh_launcher_mpi.h \
+	posh_launcher_padico.cpp posh_launcher_padico.h \
+	posh_neighbor.h posh_heap.h posh_communication.h posh_sm.cpp \
+	posh_sm.h ked_tcp.cpp ked_tcp.h posh_tcp.cpp posh_tcp.h \
+	shmem_tcp.cpp shmem_tcp.h posh_mpi.cpp posh_mpi.h \
+	posh_nmad.cpp posh_nmad.h posh_knem.cpp posh_knem.h \
+	posh_hub.cpp posh_hub.h
+@ENABLE_LAUNCHERLOCAL_TRUE@am__objects_1 = posh_launcher_sm.lo
+@ENABLE_LAUNCHERMPI_TRUE@am__objects_2 = posh_launcher_mpi.lo
+@ENABLE_LAUNCHERPADICO_TRUE@am__objects_3 = posh_launcher_padico.lo
+@ENABLE_COMM_TCP_TRUE@am__objects_4 = ked_tcp.lo posh_tcp.lo \
+@ENABLE_COMM_TCP_TRUE@	shmem_tcp.lo
+@ENABLE_COMM_MPI_TRUE@am__objects_5 = posh_mpi.lo
+@ENABLE_COMM_NMAD_TRUE@am__objects_6 = posh_nmad.lo
+@ENABLE_COMM_KNEM_TRUE@am__objects_7 = posh_knem.lo
+@ENABLE_COMM_HUB_MPI_TRUE@am__objects_8 = posh_hub.lo
 am_libshmem_la_OBJECTS = shmem_accessible.lo shmem_lock.lo \
 	shmem_alloc.lo shmem_MeMyselfAndI_implem.lo shmem_atomic.lo \
 	shmem_collect.lo shmem_barrier.lo shmem_ptr.lo shmem_bcast.lo \
 	shmem_put.lo shmem_collectives.lo \
 	shmem_SymmetricHeap_Implem.lo shmem_get.lo shmem_sync.lo \
-	shmem_init.lo shmem_reduce.lo shmem_utils.lo posh_sm.lo
+	shmem_init.lo shmem_reduce.lo shmem_utils.lo $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3) posh_sm.lo $(am__objects_4) \
+	$(am__objects_5) $(am__objects_6) $(am__objects_7) \
+	$(am__objects_8)
 libshmem_la_OBJECTS = $(am_libshmem_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -207,7 +242,12 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/posh_sm.Plo \
+am__depfiles_remade = ./$(DEPDIR)/ked_tcp.Plo ./$(DEPDIR)/posh_hub.Plo \
+	./$(DEPDIR)/posh_knem.Plo ./$(DEPDIR)/posh_launcher_mpi.Plo \
+	./$(DEPDIR)/posh_launcher_padico.Plo \
+	./$(DEPDIR)/posh_launcher_sm.Plo ./$(DEPDIR)/posh_mpi.Plo \
+	./$(DEPDIR)/posh_nmad.Plo ./$(DEPDIR)/posh_sm.Plo \
+	./$(DEPDIR)/posh_tcp.Plo \
 	./$(DEPDIR)/shmem_MeMyselfAndI_implem.Plo \
 	./$(DEPDIR)/shmem_SymmetricHeap_Implem.Plo \
 	./$(DEPDIR)/shmem_accessible.Plo ./$(DEPDIR)/shmem_alloc.Plo \
@@ -218,7 +258,8 @@ am__depfiles_remade = ./$(DEPDIR)/posh_sm.Plo \
 	./$(DEPDIR)/shmem_portability.Po ./$(DEPDIR)/shmem_ptr.Plo \
 	./$(DEPDIR)/shmem_put.Plo ./$(DEPDIR)/shmem_reduce.Plo \
 	./$(DEPDIR)/shmem_s2sc.Po ./$(DEPDIR)/shmem_sync.Plo \
-	./$(DEPDIR)/shmem_utils.Plo ./$(DEPDIR)/spawn.Po
+	./$(DEPDIR)/shmem_tcp.Plo ./$(DEPDIR)/shmem_utils.Plo \
+	./$(DEPDIR)/spawn.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -266,7 +307,7 @@ am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libshmem_la_SOURCES) $(shmem_s2sc_SOURCES) \
 	$(spawn_SOURCES)
-DIST_SOURCES = $(libshmem_la_SOURCES) $(shmem_s2sc_SOURCES) \
+DIST_SOURCES = $(am__libshmem_la_SOURCES_DIST) $(shmem_s2sc_SOURCES) \
 	$(spawn_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -446,8 +487,11 @@ libshmem_la_SOURCES = shmem_accessible.cpp shmem_lock.cpp \
 	shmem_bcast.cpp shmem_put.cpp shmem_collectives.cpp \
 	shmem_SymmetricHeap_Implem.cpp shmem_get.cpp shmem_sync.cpp \
 	shmem_init.cpp shmem_reduce.cpp shmem_utils.cpp \
-	posh_launcher.h posh_neighbor.h posh_heap.h \
-	posh_communication.h posh_sm.cpp posh_sm.h
+	posh_launcher.h $(am__append_1) $(am__append_2) \
+	$(am__append_3) posh_neighbor.h posh_heap.h \
+	posh_communication.h posh_sm.cpp posh_sm.h $(am__append_4) \
+	$(am__append_5) $(am__append_6) $(am__append_7) \
+	$(am__append_8)
 
 #################################################################################
 # Fault tolerance
@@ -468,7 +512,7 @@ shmem_s2sc_SOURCES = shmem_s2sc.ll
 shmem_s2sc_LDADD = @LEXLIB@ 
 shmem_s2sc_LDFLAGS = -no-undefined
 dist_bin_SCRIPTS = shmemcc
-include_HEADERS = shmem.h
+include_HEADERS = shmem.h shmem_constants.h
 ACLOCAL_AMFLAGS = -I ../config 
 all: all-am
 
@@ -640,7 +684,16 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ked_tcp.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_hub.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_knem.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_launcher_mpi.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_launcher_padico.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_launcher_sm.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_mpi.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_nmad.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_sm.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posh_tcp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shmem_MeMyselfAndI_implem.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shmem_SymmetricHeap_Implem.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shmem_accessible.Plo@am__quote@ # am--include-marker
@@ -659,6 +712,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shmem_reduce.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shmem_s2sc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shmem_sync.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shmem_tcp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shmem_utils.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spawn.Po@am__quote@ # am--include-marker
 
@@ -871,7 +925,16 @@ clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
 	clean-libtool mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ./$(DEPDIR)/posh_sm.Plo
+		-rm -f ./$(DEPDIR)/ked_tcp.Plo
+	-rm -f ./$(DEPDIR)/posh_hub.Plo
+	-rm -f ./$(DEPDIR)/posh_knem.Plo
+	-rm -f ./$(DEPDIR)/posh_launcher_mpi.Plo
+	-rm -f ./$(DEPDIR)/posh_launcher_padico.Plo
+	-rm -f ./$(DEPDIR)/posh_launcher_sm.Plo
+	-rm -f ./$(DEPDIR)/posh_mpi.Plo
+	-rm -f ./$(DEPDIR)/posh_nmad.Plo
+	-rm -f ./$(DEPDIR)/posh_sm.Plo
+	-rm -f ./$(DEPDIR)/posh_tcp.Plo
 	-rm -f ./$(DEPDIR)/shmem_MeMyselfAndI_implem.Plo
 	-rm -f ./$(DEPDIR)/shmem_SymmetricHeap_Implem.Plo
 	-rm -f ./$(DEPDIR)/shmem_accessible.Plo
@@ -890,6 +953,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/shmem_reduce.Plo
 	-rm -f ./$(DEPDIR)/shmem_s2sc.Po
 	-rm -f ./$(DEPDIR)/shmem_sync.Plo
+	-rm -f ./$(DEPDIR)/shmem_tcp.Plo
 	-rm -f ./$(DEPDIR)/shmem_utils.Plo
 	-rm -f ./$(DEPDIR)/spawn.Po
 	-rm -f Makefile
@@ -938,7 +1002,16 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ./$(DEPDIR)/posh_sm.Plo
+		-rm -f ./$(DEPDIR)/ked_tcp.Plo
+	-rm -f ./$(DEPDIR)/posh_hub.Plo
+	-rm -f ./$(DEPDIR)/posh_knem.Plo
+	-rm -f ./$(DEPDIR)/posh_launcher_mpi.Plo
+	-rm -f ./$(DEPDIR)/posh_launcher_padico.Plo
+	-rm -f ./$(DEPDIR)/posh_launcher_sm.Plo
+	-rm -f ./$(DEPDIR)/posh_mpi.Plo
+	-rm -f ./$(DEPDIR)/posh_nmad.Plo
+	-rm -f ./$(DEPDIR)/posh_sm.Plo
+	-rm -f ./$(DEPDIR)/posh_tcp.Plo
 	-rm -f ./$(DEPDIR)/shmem_MeMyselfAndI_implem.Plo
 	-rm -f ./$(DEPDIR)/shmem_SymmetricHeap_Implem.Plo
 	-rm -f ./$(DEPDIR)/shmem_accessible.Plo
@@ -957,6 +1030,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/shmem_reduce.Plo
 	-rm -f ./$(DEPDIR)/shmem_s2sc.Po
 	-rm -f ./$(DEPDIR)/shmem_sync.Plo
+	-rm -f ./$(DEPDIR)/shmem_tcp.Plo
 	-rm -f ./$(DEPDIR)/shmem_utils.Plo
 	-rm -f ./$(DEPDIR)/spawn.Po
 	-rm -f Makefile
@@ -1000,14 +1074,6 @@ uninstall-am: uninstall-binPROGRAMS uninstall-dist_binSCRIPTS \
 
 .PRECIOUS: Makefile
 
-@ENABLE_LAUNCHERLOCAL_TRUE@	libshmem_la_SOURCES += posh_launcher_sm.cpp posh_launcher_sm.h
-@ENABLE_LAUNCHERMPI_TRUE@	libshmem_la_SOURCES += posh_launcher_mpi.cpp posh_launcher_mpi.h
-@ENABLE_LAUNCHERPADICO_TRUE@	libshmem_la_SOURCES += posh_launcher_padico.cpp posh_launcher_padico.h
-
-@ENABLE_COMM_TCP_TRUE@	libshmem_la_SOURCES +=ked_tcp.cpp ked_tcp.h posh_tcp.cpp posh_tcp.h shmem_tcp.cpp shmem_tcp.h
-@ENABLE_COMM_MPI_TRUE@	libshmem_la_SOURCES += posh_mpi.cpp posh_mpi.h
-@ENABLE_COMM_NMAD_TRUE@	libshmem_la_SOURCES += posh_nmad.cpp posh_nmad.h
-@ENABLE_COMM_KNEM_TRUE@	libshmem_la_SOURCES += posh_knem.cpp posh_knem.h
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

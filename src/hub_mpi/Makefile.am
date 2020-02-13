@@ -1,7 +1,7 @@
 #
 #
-# Copyright (c) 2014-2020 LIPN - Universite Paris 13
-#                              - Universite Sorbonne Paris Nord
+# Copyright (c) 2020 LIPN - Universite Paris 13
+#                         - Universite Sorbonne Paris Nord
 #                    All rights reserved.
 #
 # This file is part of POSH.
@@ -21,6 +21,12 @@
 #
 #
 
-SUBDIRS = src src/hub_mpi
+#################################################################################
+# Sources
+#################################################################################
 
-ACLOCAL_AMFLAGS=-I config 
+hub_mpi_SOURCES = hub_mpi.cpp
+
+bin_PROGRAMS = hub-mpi
+
+ACLOCAL_AMFLAGS=-I ../../config 

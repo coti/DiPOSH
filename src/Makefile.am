@@ -1,6 +1,7 @@
 #
 #
-# Copyright (c) 2014-2019 LIPN - Universite Paris 13
+# Copyright (c) 2014-2020 LIPN - Universite Paris 13
+#                              - Universite Sorbonne Paris Nord
 #                    All rights reserved.
 #
 # This file is part of POSH.
@@ -64,7 +65,7 @@ libshmem_la_SOURCES += posh_neighbor.h posh_heap.h posh_communication.h
 libshmem_la_SOURCES += posh_sm.cpp posh_sm.h
 
 if ENABLE_COMM_TCP
-libshmem_la_SOURCES +=ked_tcp.cpp ked_tcp.h posh_tcp.cpp posh_tcp.h shmem_tcp.cpp shmem_tcp.h
+libshmem_la_SOURCES += ked_tcp.cpp ked_tcp.h posh_tcp.cpp posh_tcp.h shmem_tcp.cpp shmem_tcp.h
 endif
 if ENABLE_COMM_MPI
 libshmem_la_SOURCES += posh_mpi.cpp posh_mpi.h

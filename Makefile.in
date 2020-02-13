@@ -16,7 +16,8 @@
 
 #
 #
-# Copyright (c) 2014-2019 LIPN - Universite Paris 13
+# Copyright (c) 2014-2020 LIPN - Universite Paris 13
+#                              - Universite Sorbonne Paris Nord
 #                    All rights reserved.
 #
 # This file is part of POSH.
@@ -362,7 +363,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-SUBDIRS = src
+SUBDIRS = src src/hub_mpi
 ACLOCAL_AMFLAGS = -I config 
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
