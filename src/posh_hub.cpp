@@ -128,8 +128,6 @@ int Communication_hub_t::posh__put(  void* target, const void* source, size_t si
     
     managed_shared_memory::handle_t handle = myHeap.myHeap.get_handle_from_address( target );
     MPI_Aint disp = (MPI_Aint) handle;
-    handle = myHeap.myHeap.get_handle_from_address( source );
-    MPI_Aint src = (MPI_Aint) handle;
     std::vector<long long int> couple;
     couple.push_back( disp );
     couple.push_back( pe );
@@ -150,12 +148,26 @@ int Communication_hub_t::posh__put(  void* target, const void* source, size_t si
     return 0;
 }
 
-int Communication_hub_t::posh__get(  void* target, const void* source, size_t size, int pe ){
-    /* Open remote PE's symmetric heap */
-    const void* buf = const_cast<const void*>(_getRemoteAddr( source, pe ) );
-    /* Pull the data here */
-    //    _shmem_memcpy( reinterpret_cast<void *>( target ), buf, size );
-    std::cout << " GET " << pe << " target " << target <<  "TODO " << std::endl;
+int Communication_hub_t::posh__get(  void* local, const void* target, size_t size, int pe ){
+
+    /* We shouldn't have to deal with local communications
+       bcause local neighbors are initialized with SM communications */
+    
+    managed_shared_memory::handle_t handle = myHeap.myHeap.get_handle_from_address( target );
+    MPI_Aint disp = (MPI_Aint) handle;
+    std::vector<long long int> couple;
+    couple.push_back( disp );
+    couple.push_back( pe );
+    couple.push_back( size );
+
+    mpi::communicator *comm = &(Endpoint_hub_t::local_comm);
+    int hubrank = comm->size() - 1;
+    
+    /* Send the address and destination to my hub, receive the data */
+    
+    comm->send( hubrank, TAG_GET, couple );
+    comm->recv( hubrank, TAG_DATA, (char*)local, size );
+    
     return 0;
 }
 

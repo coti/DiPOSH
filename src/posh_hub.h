@@ -29,11 +29,14 @@ namespace mpi = boost::mpi;
 #define TAG_DECLARE   1
 #define TAG_PUT       2
 #define TAG_PUT_DONE  3
-#define TAG_DATA      4
+#define TAG_GET       4
+#define TAG_DATA      16
 
 //int shmem_hub_put( int, void*, const void*, size_t );
 //int shmem_hub_get( int, void*, const void*, size_t );
 //void shmem_hub_init( void );
+
+void shmem_hub_finalize( void );
 
 class ContactInfo_hub  : public ContactInfo  {
 
