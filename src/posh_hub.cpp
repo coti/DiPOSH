@@ -64,12 +64,8 @@ void Endpoint_hub_t::init_end( ) {
 
     /* How many hubs am I going to spawn? Prepare a color (also used later) */
 
-    //std::hash<std::string> hash_fn;
-    int color; // = hash_fn( mpi::environment::processor_name() );
-
-    /* DEBUG je les mets 2 par 2 */
-    color = std::floor( this->rank / 2 );
-    //    std::cout << color << std::endl;
+    std::hash<std::string> hash_fn;
+    int color = hash_fn( mpi::environment::processor_name() );
 
     std::vector<int> colors;
     for( int i = 0 ; i < myInfo.getSize() ; i++ ) colors.push_back( 0 );
@@ -104,15 +100,7 @@ void Endpoint_hub_t::init_end( ) {
 
     /* Create a local communicator, on each machine, including the hub */
     
-    std::hash<std::string> hash_fn;
     color = hash_fn( mpi::environment::processor_name() );
-#if 1
-    /* DEBUG je les mets 2 par 2 */
-    color = std::floor( this->rank / 2 );
-    if( this->rank == 1 ) color = 1;
-    if( this->rank == 3 ) color = 0;
-    //    std::cout << "process " << new_world.rank() << " color " << color << std::endl;
-#endif
     this->local_comm = new_world.split( color );
 
     /* Declare myself to my hub (last process of the communicator) */

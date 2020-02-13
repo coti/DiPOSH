@@ -142,10 +142,6 @@ int initCommunicators( mpi::communicator& new_world, mpi::communicator& local_co
     
     std::hash<std::string> hash_fn;
     color = hash_fn( mpi::environment::processor_name() );
-#if 1
-    color = hubs.rank(); // DEBUG
-    //    std::cout << "hub " << new_world.rank() << " color " << color << std::endl;
-#endif
     local_comm = new_world.split( color );
 
     // std::cout << "hub " << hubs.rank() << " I am local rank " << local_comm.rank() << " in " << local_comm.size() << std::endl;
