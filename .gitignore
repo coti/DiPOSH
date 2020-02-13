@@ -1,0 +1,9 @@
+*.o
+*.lo
+*/*.o
+*/*.lo
+*/*/*.o
+*/*/*.lo
+Makefile
+src/Makefile
+*/*/Makefile
