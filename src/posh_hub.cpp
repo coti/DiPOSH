@@ -57,50 +57,35 @@ void Communication_hub_t::init( int rank ) {
 void Endpoint_hub_t::init_end( ) {
     
     MPI_Comm comm_dup;
+    std::hash<std::string> hash_fn;
 
     /* At this point, my local heap is already initialized */
     
     this->rank = myInfo.getRank();
 
-    /* How many hubs am I going to spawn? Prepare a color (also used later) */
+    /* Replace myInfo.world by a world without the hubs */
 
-    std::hash<std::string> hash_fn;
-    int color = hash_fn( mpi::environment::processor_name() );
-  
-    std::vector<int> colors;
-    for( int i = 0 ; i < myInfo.getSize() ; i++ ) colors.push_back( 0 );
+    //    std::cout << "size :" << myInfo.getSize() << " world " << myInfo.world.size() << std::endl;
+
+    int color = 0;
+
+    mpi::communicator world;
+    myInfo.world = world.split( color );
+
+    myInfo.setSize( myInfo.world.size() );
+    myInfo.setRank( myInfo.world.rank() );
     
-    mpi::all_gather( myInfo.world, color, colors );
-    int nbhubs = 1;
-    std::sort( colors.begin(), colors.end() );
-    for( auto it = colors.begin()+1 ; it != colors.end() ; it++ ) {
-        if( *it != *(it-1) ) {
-            nbhubs++;
-        }
-    }
-    
-    //    std::cout << "Spawn " << nbhubs << " hubs" << std::endl;
+    //    std::cout << "size : " << myInfo.world.size() << std::endl;
 
-    /* Spawn the hubs. The new global comm is new_world */
-    
-    //  char* args[2] = {"hub-mpi", NULL};
-    // MPI_Comm_spawn( "valgrind", args, nbhubs,
-    MPI_Comm_spawn( "hub-mpi", MPI_ARGV_NULL, nbhubs,
-                    MPI_INFO_NULL, 0, myInfo.world, &comm_dup,
-                    MPI_ERRCODES_IGNORE);
-    mpi::intercommunicator intercomm( comm_dup, mpi::comm_duplicate );
-    mpi::communicator new_world = intercomm.merge( false );
+    /* Build a subcommunicator for my hub and the processes on the same node */
 
-    //    std::cout << "New world size: " << new_world.size() << std::endl;
-
-    /* Create a local communicator, on each machine, including the hub */
-
-    this->local_comm = new_world.split( color );
+    color = hash_fn( mpi::environment::processor_name() );
+    //    color = (int) myInfo.world.rank() / 2; // DEBUG
+    this->local_comm = world.split( color );
     
     /* Declare myself to my hub (last process of the communicator) */
     
     this->local_comm.send( local_comm.size()-1, TAG_DECLARE, this->rank );
-    //    std::cout << myInfo.getRank() << " local hub " << this->local_comm.size() - 1 << std::endl;
 }
 
 int Endpoint_hub_t::finalize( ) {

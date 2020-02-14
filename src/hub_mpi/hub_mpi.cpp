@@ -38,7 +38,6 @@ namespace bip = boost::interprocess;
 
 void getLocalRanks( std::vector<std::pair<int,int> >&, mpi::communicator );
 mpi::communicator buildMergedComm( void );
-int initCommunicators( mpi::communicator&, mpi::communicator&, mpi::communicator& );
 std::vector<int> buildProcessMap( mpi::communicator, mpi::communicator, std::vector<std::pair<int,int> >, int& );
 void openLocalHeaps( std::vector<std::pair<int,int> >&, std::map<int, bip::managed_shared_memory*>&, mpi::communicator, std::map<int, MPI_Win>&, int );
 void waitForComm( mpi::communicator&, mpi::communicator&, std::vector<int>&, std::map<int, MPI_Win>& );
@@ -47,8 +46,9 @@ void performPut( int, std::vector<long long int>, std::vector<int>&, std::vector
 int main( int argc,char **argv ) {
     
     mpi::environment env( argc, argv );
+    mpi::communicator world;
     MPI_Comm parent;
-    mpi::communicator new_world, local_comm, hubs;
+    mpi::communicator local_comm, hubs;
     std::vector<std::pair<int,int> > myranks;
     std::map<int, bip::managed_shared_memory*> localHeaps;
     std::map<int, MPI_Win> windows;
@@ -57,16 +57,25 @@ int main( int argc,char **argv ) {
     
     /* Build the communicators. */
 
-    rc = initCommunicators( new_world, local_comm, hubs );
-    if( EXIT_FAILURE == rc ) {
-        std::cerr << "Error building the communicators" << std::endl;
-        return EXIT_FAILURE;
-    }
+    int color = 1;
+
+    hubs = world.split( color );
+
+    //    std::cout << "Hubs: " << hubs.size() << std::endl;
+
+    /* Get a communicator for me and my processes */
+
+    std::hash<std::string> hash_fn;
+    color = hash_fn( mpi::environment::processor_name() );
+    //color = hubs.rank(); // not as reliable wrt the locality
+    local_comm = world.split( color );
+
+    //    std::cout << "Local comm (hub): " << local_comm.size() << std::endl;
 
     /* Receive the ranks of the processes that will communicate through me */
     
     getLocalRanks( myranks, local_comm );
-
+    
     /* How can I contact each process? */
     
     std::vector<int> pmap = buildProcessMap( hubs, local_comm,  myranks, max );
@@ -78,8 +87,8 @@ int main( int argc,char **argv ) {
     /* Wait for communications */
 
     waitForComm( local_comm, hubs, pmap, windows );
-    
-  return EXIT_SUCCESS;
+
+    return EXIT_SUCCESS;
 }
 
 /* each process is stored using <local rank, global rank> */
@@ -95,57 +104,6 @@ void getLocalRanks( std::vector<std::pair<int,int> >& ranks, mpi::communicator c
         // std::cout << "Source: " << stat.source() << " (" << name << ")" << std::endl;
         ranks.push_back( std::pair<int, int>( stat.source(), name ) );
     }
-}
-
-/* Build the local communicator */
-
-mpi::communicator buildMergedComm( ) {
-    MPI_Comm parent;
-    mpi::communicator comm;
-    
-    MPI_Comm_get_parent( &parent );
-    mpi::intercommunicator intercomm( parent, mpi::comm_duplicate );
-    comm = intercomm.merge( true );
-    
-    if( parent == MPI_COMM_NULL){
-        std::cerr << "ERROR: Intercommunicator on the MPI HUB is null" << std::endl;
-    } 
-    return comm;
-}
-
-/* Build the communicators:
- * - new_world: contains all the processes including the hubs
- * - local_comm: contains the processes located on the node, including the hub
- * - hubs: all the hubs
- */
-
-int initCommunicators( mpi::communicator& new_world, mpi::communicator& local_comm, mpi::communicator& hubs ){
-    int rank;
-    int color;
-    
-    new_world = buildMergedComm();
-    if( false == new_world ) {
-        return EXIT_FAILURE;
-    }
-    
-    rank = new_world.rank();
-
-    /* Create a communicator for the hubs */
-    
-    //    std::cout << "New world size (hub): " << new_world.size() << std::endl;
-
-    hubs = mpi::communicator( MPI_COMM_WORLD, mpi::comm_duplicate );//new_world.split( color );
-    //    std::cout << "Hubs size (hub): " << hubs.size() << std::endl;
-    
-    /* Create a local communicator, on each machine, including the hub */
-    
-    std::hash<std::string> hash_fn;
-    color = hash_fn( mpi::environment::processor_name() );
-    local_comm = new_world.split( color );
-
-    // std::cout << "hub " << hubs.rank() << " I am local rank " << local_comm.rank() << " in " << local_comm.size() << std::endl;
-
-    return EXIT_SUCCESS;
 }
 
 /* Build a process map, ie which hub to send the message to when we want
