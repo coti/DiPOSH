@@ -61,17 +61,17 @@ int main( int argc,char **argv ) {
 
     hubs = world.split( color );
 
-    //    std::cout << "Hubs: " << hubs.size() << std::endl;
+    std::cout << "Hubs: " << hubs.size() << std::endl;
 
     /* Get a communicator for me and my processes */
 
     std::hash<std::string> hash_fn;
-    color = hash_fn( mpi::environment::processor_name() );
-    //color = hubs.rank(); // not as reliable wrt the locality
+    //color = hash_fn( mpi::environment::processor_name() );
+    color = hubs.rank(); // not as reliable wrt the locality
     local_comm = world.split( color );
 
-    //    std::cout << "Local comm (hub): " << local_comm.size() << std::endl;
-
+    std::cout << "Local comm (hub): " << local_comm.size() << std::endl;
+    
     /* Receive the ranks of the processes that will communicate through me */
     
     getLocalRanks( myranks, local_comm );
@@ -224,6 +224,9 @@ void performPut( int origin, std::vector<long long int> info, std::map<int, MPI_
     MPI_Put( buff, size, MPI_CHAR, dest, disp, size, MPI_CHAR, win );
     MPI_Win_unlock( dest, win ); 
 
+    /* Send completion notification */
+    
+    local_comm.send( origin, TAG_PUT_DONE );
     free( buff );
 }
 
@@ -278,9 +281,6 @@ void waitForComm( mpi::communicator& local_comm, mpi::communicator& hubs, std::v
             break;
         }
         
-        /* Send completion notification */
-        
-        local_comm.send( stat.source(), TAG_PUT_DONE );
     }
 
     /* Finished. */
