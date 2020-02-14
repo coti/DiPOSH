@@ -94,7 +94,7 @@ protected:
         return shmem_sm_get( pe, target, source, size );
     }
     int posh__put(  void* target, const void* source, size_t size, int pe ){
-        std::cout << "put" << std::endl;
+        //        std::cout << "put" << std::endl;
         return shmem_sm_put( pe, target, source, size );
     }
 
