@@ -36,7 +36,7 @@ nm_comm_t p_comm = NULL;
 #endif // _WITH_NMAD
 
 void shmem_barrier_all( ){
-#ifndef MPICHANNEL
+#if !defined( MPICHANNEL ) && !defined( MPIHUBCHANNEL )
 #ifdef _WITH_NMAD
     if( NULL == p_comm )
         p_comm = nm_comm_world( "nm_posh_barrier" );
@@ -45,7 +45,7 @@ void shmem_barrier_all( ){
     shmem_barrier_naive();
 #endif // _WITH_NMAD
 #else
-    MPI_Barrier( MPI_COMM_WORLD );
+    MPI_Barrier( myInfo.world );
 #endif 
 }
 
