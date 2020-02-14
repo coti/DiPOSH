@@ -66,7 +66,7 @@ void Endpoint_hub_t::init_end( ) {
 
     std::hash<std::string> hash_fn;
     int color = hash_fn( mpi::environment::processor_name() );
-
+  
     std::vector<int> colors;
     for( int i = 0 ; i < myInfo.getSize() ; i++ ) colors.push_back( 0 );
     
@@ -93,16 +93,10 @@ void Endpoint_hub_t::init_end( ) {
 
     //    std::cout << "New world size: " << new_world.size() << std::endl;
 
-    /* Create a communicator for the hubs */
-
-    color = 0;
-    mpi::communicator processes = new_world.split( color );
-
     /* Create a local communicator, on each machine, including the hub */
-    
-    color = hash_fn( mpi::environment::processor_name() );
-    this->local_comm = new_world.split( color );
 
+    this->local_comm = new_world.split( color );
+    
     /* Declare myself to my hub (last process of the communicator) */
     
     this->local_comm.send( local_comm.size()-1, TAG_DECLARE, this->rank );

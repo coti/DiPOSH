@@ -134,8 +134,7 @@ int initCommunicators( mpi::communicator& new_world, mpi::communicator& local_co
     
     //    std::cout << "New world size (hub): " << new_world.size() << std::endl;
 
-    color = 1;
-    hubs = new_world.split( color );
+    hubs = mpi::communicator( MPI_COMM_WORLD, mpi::comm_duplicate );//new_world.split( color );
     //    std::cout << "Hubs size (hub): " << hubs.size() << std::endl;
     
     /* Create a local communicator, on each machine, including the hub */
