@@ -24,8 +24,10 @@ my $no_static = 0;
 my $options = "";
 my $cur_dir = getcwd;
 
-my $libs="-L. -lshmem -lboost_system";
-my $CXX="g++";
+#my $libs="-L. -lshmem -lboost_system";
+my $libs="-L. -lshmem -lboost_system -lboost_mpi";
+#my $CXX="g++";
+my $CXX="mpic++";
 my $dir = getcwd;
 my $abs_path = dirname( abs_path($0) );
 my $s2sc = $abs_path . "/shmem_s2sc";
