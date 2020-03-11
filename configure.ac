@@ -308,6 +308,8 @@ AS_IF( [test "x$faulttolerance" = "xmarker"],[ CPPFLAGS+=" -DCHANDYLAMPORT -DCL_
 AS_IF( [test "x$faulttolerance" = "xdoublebarrier"],[ AM_CONDITIONAL(ENABLE_FT, true) ])
 AS_IF( [test "x$faulttolerance" = "xdoublebarrier"],[ CPPFLAGS+=" -DCHANDYLAMPORT -DCL_DOUBLEBARRIER " ] )
 
+AX_DMTCP_HOME([])
+
 
 #################################################################################
 # PERFORMANCE PROFILING
