@@ -135,6 +135,8 @@ public:
         shmem_tcp_init();
     }
     int finalize(){} // TODO
+    void reopen(){ /*init(this->rank);*/ } // tOO
+    void close( void ){} // TODO
 
     int getmyTCPport( void );
     void setMyTCPthreadID( boost::thread& );

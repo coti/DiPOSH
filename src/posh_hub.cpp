@@ -75,17 +75,19 @@ void Endpoint_hub_t::init_end( ) {
     myInfo.setSize( myInfo.world.size() );
     myInfo.setRank( myInfo.world.rank() );
     
-    //    std::cout << "size : " << myInfo.world.size() << std::endl;
+    std::cout << "size : " << myInfo.world.size() << std::endl;
 
     /* Build a subcommunicator for my hub and the processes on the same node */
 
-    color = hash_fn( mpi::environment::processor_name() );
-    //    color = (int) myInfo.world.rank() / 2; // DEBUG
+    //    color = hash_fn( mpi::environment::processor_name() );
+    color = (int) myInfo.world.rank()%2 ; // DEBUG
     this->local_comm = world.split( color );
+    //std::cout << "local comm " << this->local_comm.rank() << " in " << this->local_comm.size() << std::endl;
     
     /* Declare myself to my hub (last process of the communicator) */
     
     this->local_comm.send( local_comm.size()-1, TAG_DECLARE, this->rank );
+    // std::cout << "declared" << std::endl;
 }
 
 int Endpoint_hub_t::finalize( ) {
@@ -100,7 +102,7 @@ int Communication_hub_t::posh__put(  void* target, const void* source, size_t si
 
     /* We shouldn't have to deal with local communications
        bcause local neighbors are initialized with SM communications */
-    
+
     managed_shared_memory::handle_t handle = myHeap.myHeap.get_handle_from_address( target );
     MPI_Aint disp = (MPI_Aint) handle;
     std::vector<long long int> couple;
@@ -110,7 +112,7 @@ int Communication_hub_t::posh__put(  void* target, const void* source, size_t si
 
     mpi::communicator *comm = &(Endpoint_hub_t::local_comm);
     int hubrank = comm->size() - 1;
-    
+
     /* send the data, address and destination to my hub */
     
     comm->send( hubrank, TAG_PUT, couple );
@@ -127,7 +129,7 @@ int Communication_hub_t::posh__get(  void* local, const void* target, size_t siz
 
     /* We shouldn't have to deal with local communications
        bcause local neighbors are initialized with SM communications */
-    
+
     managed_shared_memory::handle_t handle = myHeap.myHeap.get_handle_from_address( target );
     MPI_Aint disp = (MPI_Aint) handle;
     std::vector<long long int> couple;

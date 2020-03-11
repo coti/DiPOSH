@@ -34,6 +34,8 @@ public:
 class Communication_t {
  public:
     virtual void init( int ) = 0;
+    virtual void reopen( void ) = 0;
+    virtual void close( void ) = 0;
     virtual void setContactInfo( ContactInfo& ) = 0;
     virtual int posh__get(  void* , const void* , size_t , int  ) = 0;
     virtual int posh__put(  void* , const void* , size_t , int  ) = 0;

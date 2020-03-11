@@ -25,8 +25,10 @@
 # Sources
 #################################################################################
 
+if ENABLE_COMM_HUB_MPI
 hub_mpi_SOURCES = hub_mpi.cpp
 
 bin_PROGRAMS = hub-mpi
+endif
 
 ACLOCAL_AMFLAGS=-I ../../config 

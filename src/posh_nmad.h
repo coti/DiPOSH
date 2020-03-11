@@ -114,6 +114,8 @@ class Communication_NMAD_t : public Communication_t, public NMADendpoint_t {
     void init( int rank ){
         setGate( rank );
     }
+    void reopen(){ init(this->rank); } // TODO
+    void close( void ){} // TODO
     void setContactInfo( ContactInfo& ci ){
         this->base_addr = ci.getBaseAddress();
     }

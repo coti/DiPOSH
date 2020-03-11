@@ -99,6 +99,8 @@ class Communication_KNEM_t : public Communication_t, public KNEMendpoint_t {
     void init( int rank ){
         /* TODO */
     }
+    void reopen(){ init(this->rank); } // TODO
+    void close( void ){} // TODO
     void setContactInfo( ContactInfo_KNEM& ci ) {
         this->cookie = ci.getCookie();
     }

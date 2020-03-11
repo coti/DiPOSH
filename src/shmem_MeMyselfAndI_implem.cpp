@@ -190,7 +190,6 @@ void MeMyselfAndI::findAndSetMyRank( ){
     if( -1 != this->shmem_rank ) {
         return;
     } else {
-        /* TODO use an object there */
         this->shmem_rank = rte->getRank();
         //      this->myContactInfo.setRank( rte->getRank() ); // FIXME do this later
     }
@@ -364,7 +363,7 @@ void MeMyselfAndI::initNeighborHub( int neighborrank ) {
     /* is this guy on the same node as me? */
 
     char* _name;
-    _name = myHeap.buildHeapName( neighborrank );
+    /*    _name = myHeap.buildHeapName( neighborrank );
     if(  true == _sharedMemEsists( _name ) ) { 
         this->neighbors[neighborrank].comm_type = TYPE_SM;
         this->neighbors[neighborrank].communications = new Communication_SM_t();    
@@ -372,15 +371,15 @@ void MeMyselfAndI::initNeighborHub( int neighborrank ) {
 #ifdef _DEBUG 
         std::cout << "Init neighbor  " << neighborrank << " SM" << std::endl;
 #endif // _DEBUG        
-    } else { 
+    } else { */
         this->neighbors[neighborrank].comm_type = TYPE_HUB;
         this->neighbors[neighborrank].communications = new Communication_hub_t();
         //    std::cout << "Init HUB neighbor " << neighborrank << std::endl;
 #ifdef _DEBUG 
         std::cout << "Init neighbor  " << neighborrank << " HUB" << std::endl;
 #endif // _DEBUG
-    }
-    free( _name );
+	// }
+	//    free( _name );
 }
 
 Endpoint_hub_t* MeMyselfAndI::getMyEndpointHub(){
@@ -397,8 +396,9 @@ void MeMyselfAndI::communicationInit( char* comm_channel ){
 #ifdef DISTRIBUTED_POSH
     if( NULL == comm_channel ) {
         // TODO improve this!!
-        this->myEndpoint = &( this->myEndpointHub );
-        
+	//	this->myEndpoint = &( this->myEndpointHub );
+	this->myEndpoint = &( this->myEndpointMPI );
+                
         this->myEndpoint->init_end();
 #ifdef _WITH_TCP
         /* This must be done only once the communication thread is up and initialized */
@@ -419,7 +419,7 @@ void MeMyselfAndI::communicationInit( char* comm_channel ){
 #endif // _WITH_TCP
 #ifdef MPICHANNEL
         if( 0 == strcmp( comm_channel, "MPI" ) ) {
-            this->myEndpoint = new MPIendpoint();
+            this->myEndpoint = new Endpoint_MPI_t();
             this->myEndpoint->init_end();
       }
 #endif // MPICHANNEL
@@ -469,6 +469,7 @@ void MeMyselfAndI::initNeighbors( int nb, char* comm_channel ) {
     
 #ifdef MPICHANNEL
     if( distributed ) {
+	std::cout << "Exchange CI" << std::endl;
         std::vector<ContactInfo*> ci_all( world.size() );
         shmem_mpi_exchange_ci( ci_all );
     }
@@ -550,7 +551,7 @@ void MeMyselfAndI::setMyContactInfo( int rank, uint32_t addr, uint16_t port ){
 
 void MeMyselfAndI::setMyContactInfo( int rank ){
     /* MPI version */
-    myContactInfo->setType( TYPE_MPI );
+    //    myContactInfo->setType( TYPE_MPI );
 }
 
 #ifdef _WITH_KNEM
@@ -577,13 +578,7 @@ void MeMyselfAndI::posh_close_communication_channels( ){
     
     for( i = 0 ; i < nb ; i++ ) {
         if( myInfo.getRank() != i ) {
-            
-            /* TODO: handle the distributed case */
-            
-            if( this->neighbors[i].comm_type == SM ) {
-                closeNeighbor( i );
-            }
-
+	    this->neighbors[i].communications->close();
         }
     }
     
@@ -600,19 +595,7 @@ void MeMyselfAndI::posh_reopen_communication_channels( ){
     
     for( i = 0 ; i < nb ; i++ ) {
         if( myInfo.getRank() != i ) {
-            
-            /* TODO: handle the distributed case */
-            
-            if( this->neighbors[i].comm_type == SM ) {
-                char* _name; 
-                _name = myHeap.buildHeapName( i );
-                while( false == _sharedMemEsists( _name ) ) {
-                    usleep( SPIN_TIMER );
-                }
-                managed_shared_memory remoteHeap(  open_only, _name );
-                this->neighbors[i].comm_channel.sm_channel.shared_mem_segment = std::move( remoteHeap );
-                free( _name );
-            }
+	    this->neighbors[i].communications->reopen();
         }
     }
     
@@ -622,7 +605,7 @@ void MeMyselfAndI::posh_reopen_communication_channels( ){
 /* FIXME : à ranger dans les utilitaires */
 
 void MeMyselfAndI::closeNeighbor( int rank ) {
-    auto* ptr = &(this->neighbors[rank].comm_channel.sm_channel.shared_mem_segment);
+    //    auto* ptr = &(this->neighbors[rank].comm_channel.sm_channel.shared_mem_segment);
     //    ptr->~managed_shared_memory();    /* FIXME there is a memory leak here */
     /* auto* ptr = &(this->neighbors[rank].comm_channel.sm_channel);
        ptr->~sm_comm_channel_t();*/

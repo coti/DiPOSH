@@ -102,6 +102,8 @@ protected:
     void setContactInfo( ContactInfo& ci ) {
         // nothing
     }
+    void reopen(){ init(this->rank); } // TODO
+    void close( void ){} // TODO
     int posh__get(  void* target, const void* source, size_t size, int pe );
     int posh__put(  void* target, const void* source, size_t size, int pe );
 

@@ -90,6 +90,15 @@ protected:
     void setContactInfo( ContactInfo& ci ) {
         // nothing
     }
+    void reopen(){ init(this->rank); }
+    void close( void ){
+	// TODO
+	//	    auto* ptr = &(this->neighbors[rank].comm_channel.sm_channel.shared_mem_segment);
+    //    ptr->~managed_shared_memory();    /* FIXME there is a memory leak here */
+    /* auto* ptr = &(this->neighbors[rank].comm_channel.sm_channel);
+       ptr->~sm_comm_channel_t();*/
+
+    }
     int posh__get(  void* target, const void* source, size_t size, int pe ){
         return shmem_sm_get( pe, target, source, size );
     }

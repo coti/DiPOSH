@@ -20,6 +20,8 @@
 
 #include "shmem_internal.h"
 
+void shmem_barrier_all( void );
+
 void Checkpointing::initMemName(){
     asprintf( &( this->markermemname ), "%s_%d", this->markerbasename.c_str(), myInfo.getRank() );
 }

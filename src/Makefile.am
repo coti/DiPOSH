@@ -84,7 +84,9 @@ endif
 # Fault tolerance
 #################################################################################
 
-# TODO
+if ENABLE_FT
+libshmem_la_SOURCES += posh_checkpointing.cpp posh_chandylamport.cpp
+endif
 
 #################################################################################
 # Performance profiling
@@ -103,6 +105,10 @@ libshmem_la_LDFLAGS = -version-info 0:2:0
 bin_PROGRAMS = spawn shmem_s2sc 
 
 spawn_SOURCES = spawn.cpp shmem_portability.cpp shmem_constants.h shmem_portability.h
+
+if ENABLE_FT
+spawn_SOURCES += posh_ft_coordinator.cpp
+endif
 
 shmem_s2sc_SOURCES = shmem_s2sc.ll
 

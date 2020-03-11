@@ -74,13 +74,14 @@ public:
 
 /* Hardly anything here, but necessary for symmetry purpose */
 
-class MPIendpoint : public Endpoint_t {
+class Endpoint_MPI_t : public Endpoint_t {
 protected:
     ContactInfo_MPI ci;
 public:
 
-    MPIendpoint(){}
-    
+    Endpoint_MPI_t(){}
+
+    void init() {};
     void init_end( ){
         shmem_mpi_init();
     }
@@ -90,7 +91,7 @@ public:
     int finalize(){ /* we don't need to call MPI_Finalize */ } 
 };
 
-class Communication_MPI_t : public Communication_t, public MPIendpoint {
+class Communication_MPI_t : public Communication_t, public Endpoint_MPI_t {
 
  public:
 
@@ -98,6 +99,15 @@ class Communication_MPI_t : public Communication_t, public MPIendpoint {
     
     void init( int rank ){
         //        shmem_mpi_init(  );
+    }
+    /*void init( ){
+        //        shmem_mpi_init(  );
+	}*/
+    void close(  ){
+	// nothing
+    }
+    void reopen(  ){
+	// nothing
     }
     void setContactInfo( ContactInfo& ci ) {
         /* nothing to do */

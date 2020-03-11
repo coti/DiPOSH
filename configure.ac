@@ -261,7 +261,7 @@ AC_ARG_ENABLE([mpi-hub],
 	  ACX_MPI( [ CC=mpicc ; CXX=mpic++ ; LD=mpic++  ; LDFLAGS=" ${LDFLAGS}  -lboost_mpi -lrt "],
  		   [ AC_MSG_FAILURE( MPI is required ) ] )
           ],
-	AM_CONDITIONAL([ENABLE_COMM_HUB_MPI], [test "x$enable_mpi_hub" != "xno"]))
+	AM_CONDITIONAL([ENABLE_COMM_HUB_MPI], false))
 
 #################################################################################
 # CHOICE OF COLLECTIVE COMMUNICATIONS
@@ -302,11 +302,11 @@ AC_ARG_WITH(
     ),
     [ faulttolerance="$withval" ]
 )
-
-AS_IF( [test "x$faulttolerance" = "xmarker"],
-       [ CPPFLAGS+=" -DCHANDYLAMPORT -DCL_MARKER " ])
-AS_IF( [test "x$faulttolerance" = "xdoublebarrier"],
-       [ CPPFLAGS+=" -DCHANDYLAMPORT -DCL_DOUBLEBARRIER " ])
+AM_CONDITIONAL(ENABLE_FT, false)
+AS_IF( [test "x$faulttolerance" = "xmarker"],[ CPPFLAGS+=" -DCHANDYLAMPORT -DCL_MARKER " ], 
+       [test "x$faulttolerance" = "xmarker"],[ AM_CONDITIONAL(ENABLE_FT, true) ])
+AS_IF( [test "x$faulttolerance" = "xdoublebarrier"],[ AM_CONDITIONAL(ENABLE_FT, true) ])
+AS_IF( [test "x$faulttolerance" = "xdoublebarrier"],[ CPPFLAGS+=" -DCHANDYLAMPORT -DCL_DOUBLEBARRIER " ] )
 
 
 #################################################################################

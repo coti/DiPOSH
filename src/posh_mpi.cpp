@@ -133,9 +133,12 @@ void shmem_mpi_finalize(  ){
 }
 
 void shmem_mpi_exchange_ci( std::vector<ContactInfo*> &ci_all ){
+    #if 0
     mpi::communicator world;
     ContactInfo* my_ci = getMyContactInfoP();
     mpi::all_gather( world, *my_ci, ci_all );
+
+
 #ifdef _DEBUG
     std::cout << "My CI: " << *my_ci << std::endl;
 #endif // _DEBUG
@@ -167,9 +170,11 @@ void shmem_mpi_exchange_ci( std::vector<ContactInfo*> &ci_all ){
                initNeighborSM( id );
             } else {         
                 switch( i->getType() ) {
+#if 0 //TODO refactor
                 case TYPE_TCP:
                     initNeighborTCP( id, *i );
                     break;
+#endif
                 case TYPE_MPI:
                     initNeighborMPI( id );
                     break;
@@ -184,7 +189,9 @@ void shmem_mpi_exchange_ci( std::vector<ContactInfo*> &ci_all ){
                     break;
                 }
             }
-        } else {
+        }
+#if 0 //TODO refactor
+else {
             if( 0 == strcmp( comm_channel, "TCP" ) ) {
 #ifdef _DEBUG
                 std::cout << "neighbor TCP" << std::endl;
@@ -203,10 +210,11 @@ void shmem_mpi_exchange_ci( std::vector<ContactInfo*> &ci_all ){
             }
 #endif // _WITH_KNEM
         }
+#endif
 #ifdef _DEBUG
         std::cout << "Init " << id << std::endl;
         std::cout << this->neighbors[id] << std::endl;
 #endif // _DEBUG
     }
-
+#endif
 }

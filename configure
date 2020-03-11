@@ -636,6 +636,8 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+ENABLE_FT_FALSE
+ENABLE_FT_TRUE
 ENABLE_COMM_HUB_MPI_FALSE
 ENABLE_COMM_HUB_MPI_TRUE
 ENABLE_COMM_NMAD_FALSE
@@ -18404,7 +18406,7 @@ fi
 
 
 else
-   if test "x$enable_mpi_hub" != "xno"; then
+   if false; then
   ENABLE_COMM_HUB_MPI_TRUE=
   ENABLE_COMM_HUB_MPI_FALSE='#'
 else
@@ -18458,9 +18460,35 @@ if test "${with_faulttolerance+set}" = set; then :
 
 fi
 
+ if false; then
+  ENABLE_FT_TRUE=
+  ENABLE_FT_FALSE='#'
+else
+  ENABLE_FT_TRUE='#'
+  ENABLE_FT_FALSE=
+fi
 
 if test "x$faulttolerance" = "xmarker"; then :
    CPPFLAGS+=" -DCHANDYLAMPORT -DCL_MARKER "
+elif test "x$faulttolerance" = "xmarker"; then :
+    if true; then
+  ENABLE_FT_TRUE=
+  ENABLE_FT_FALSE='#'
+else
+  ENABLE_FT_TRUE='#'
+  ENABLE_FT_FALSE=
+fi
+
+fi
+if test "x$faulttolerance" = "xdoublebarrier"; then :
+    if true; then
+  ENABLE_FT_TRUE=
+  ENABLE_FT_FALSE='#'
+else
+  ENABLE_FT_TRUE='#'
+  ENABLE_FT_FALSE=
+fi
+
 fi
 if test "x$faulttolerance" = "xdoublebarrier"; then :
    CPPFLAGS+=" -DCHANDYLAMPORT -DCL_DOUBLEBARRIER "
@@ -18681,6 +18709,18 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_COMM_HUB_MPI_TRUE}" && test -z "${ENABLE_COMM_HUB_MPI_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_COMM_HUB_MPI\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_FT_TRUE}" && test -z "${ENABLE_FT_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_FT\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_FT_TRUE}" && test -z "${ENABLE_FT_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_FT\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_FT_TRUE}" && test -z "${ENABLE_FT_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_FT\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 

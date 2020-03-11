@@ -52,6 +52,9 @@
 #ifdef MPIHUBCHANNEL
 #include "posh_hub.h"
 #endif // _WITH_HUB
+#ifdef MPICHANNEL
+#include "posh_mpi.h"
+#endif // _WITH_MPI
 
 //#include <boost/stacktrace.hpp>
 
@@ -121,6 +124,9 @@ class MeMyselfAndI {
 #endif
 #ifdef MPIHUBCHANNEL
     Endpoint_hub_t myEndpointHub;
+#endif
+#ifdef MPICHANNEL
+    Endpoint_MPI_t myEndpointMPI;
 #endif
 
 #ifdef CHANDYLAMPORT
