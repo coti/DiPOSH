@@ -5,5 +5,7 @@ DiPOSH is an evolution from POSH: Paris OpenSHMEM. POSH was designed to run on a
 DiPOSH is written in C++, trying to take advantage of an object-oriented architecture for composability and of templates. 
 
 Some design and implementation documents:
-* Communication drivers: TODO
+* [Communication drivers](communication_drivers.md)
 * [Collective communications](collective_communications.md)
+* [Launcher and run-time environment](rte.md)
+* [Fault tolerance](ft_cl.md)
