@@ -30,12 +30,15 @@
 #include <arpa/inet.h>
 #include <atomic>
 
+#include <boost/ptr_container/ptr_vector.hpp>
+
 #include "shmem_constants.h"
 #include "shmem_processinfo.h"
 #include "shmem_utils.h"
 #include "posh_communication.h"
 #include "posh_contactinfo.h"
 #include "posh_neighbor.h"
+#include "posh_collectives.h"
 
 #include "posh_launcher.h"
 
@@ -58,19 +61,15 @@
 
 //#include <boost/stacktrace.hpp>
 
+extern char* comm_channel;
+extern char* coll_type;
+
+
 #ifndef MPICHANNEL
 #define TCPCHANNEL
 #endif
 
 using namespace boost::interprocess;
-
-
-#if defined( DISTRIBUTED_POSH ) && ( defined( MPICHANNEL ) || defined( MPIHUBCHANNEL ) )
-#include <boost/mpi/environment.hpp>
-#include <boost/mpi/communicator.hpp>
-using namespace boost::mpi;
-namespace mpi = boost::mpi;
-#endif
 
 /*#include <setjmp.h>
   extern jmp_buf return_to_top_level;*/
@@ -91,6 +90,18 @@ struct Collective_t {
 
 class MeMyselfAndI {
 
+public:
+    //    std::vector<std::pair<std::unique_ptr<Endpoint_t>, neighbor_comm_type_t> > myEndpoints;
+    //  std::vector<std::pair<Endpoint_t, neighbor_comm_type_t> > myEndpoints;
+    //  std::vector<Endpoint_t> myEndpoints;
+    boost::ptr_vector <Endpoint_t> myEndpoints;
+
+    /* Info on my neighbors: their CI and the communication channels with them */
+    boost::ptr_vector<Communication_t> comm;
+    boost::ptr_vector<ContactInfo> neigh_ci;
+    
+    std::unique_ptr<Collectives_t> collectives;
+
  private:
     int shmem_rank;
     int shmem_size;
@@ -99,7 +110,8 @@ class MeMyselfAndI {
     Collective_t* collective;
 
     //    managed_shared_memory* neighbors;
-    Neighbor_t* neighbors; /* FIXME Joel said to use a vector */
+    std::vector<Neighbor_t> neighbors;
+    
 
 #ifdef _WITH_TCP
     int tcp_port;
@@ -113,6 +125,9 @@ class MeMyselfAndI {
     ContactInfo* myContactInfo;
 
     Endpoint_t* myEndpoint; // should be able to have several endpoints there
+    //std::vector<std::unique_ptr<Endpoint_t> > myEndpoints;
+
+#if 0
 #if _WITH_TCP
     TCPendpoint_t myEndpointTCP; // TODO put this behind an interface
 #endif
@@ -128,6 +143,7 @@ class MeMyselfAndI {
 #ifdef MPICHANNEL
     Endpoint_MPI_t myEndpointMPI;
 #endif
+#endif
 
 #ifdef CHANDYLAMPORT
     bool _checkpointing;
@@ -136,7 +152,7 @@ class MeMyselfAndI {
     std::map<long, boost::interprocess::named_mutex*> locks;
 
    public:
-
+    
 #if defined( MPICHANNEL ) || defined( MPIHUBCHANNEL )
     MPI_Win window;
     mpi::environment env;
@@ -184,8 +200,8 @@ class MeMyselfAndI {
     bool getStarted( void );
     void setStarted( bool );
     Collective_t* getCollective( void );
-    Neighbor_t* getNeighbors( void );
     Neighbor_t* getNeighbor( int );
+    std::vector<Neighbor_t>* getNeighbors( );
     boost::interprocess::named_mutex* getLock( long );
     void setLock( long, boost::interprocess::named_mutex* );
 #ifdef CHANDYLAMPORT
@@ -206,7 +222,7 @@ class MeMyselfAndI {
     void setCollectiveType( unsigned char );
     void* allocCollectiveSpace( size_t );
     void* getCollectiveBuffer( void );
-    void collectiveInit( void );
+    void collectiveInit( char* );
     void collectiveReset( void );
 
     void allocNeighbors( int );
@@ -214,7 +230,7 @@ class MeMyselfAndI {
     void* getRemoteHeapBaseAddr( int );
     void* getRemoteHeapLocalBaseAddr( int );
 
-    void communicationInit( char* );
+    int communicationInit( char* );
 
     void initNeighborSM( int );
     std::string getmyhostname( void );
@@ -228,9 +244,9 @@ class MeMyselfAndI {
     void initNeighborKNEM( int, ContactInfo_KNEM& );
     KNEMendpoint_t* getMyEndpointKNEM();
 #endif
-    void initNeighborNULL( int );
+    //    void initNeighborNULL( int );
 #ifdef MPICHANNEL
-    void initNeighborMPI( int );
+    //    void initNeighborMPI( int );
 #endif
 #ifdef MPIHUBCHANNEL
     void initNeighborHub( int );
@@ -244,11 +260,17 @@ class MeMyselfAndI {
     Endpoint_t* getMyEndpoint() { return this->myEndpoint; }
     
 #ifdef DISTRIBUTED_POSH
-    void setMyContactInfo( int, uint32_t, uint16_t );
+    /*    void setMyContactInfo( int, uint32_t, uint16_t );
     void setMyContactInfo( int );
     void setMyContactInfo( knem_cookie_t );
     ContactInfo* getMyContactInfoP( void );
+#else
+    void setMyContactInfo( int, uint32_t, uint16_t ){ std::cout << "do nothing line " << __LINE__ << std::endl;}
+    void setMyContactInfo( int ){ std::cout << "do nothing line " << __LINE__ << std::endl;}
+    void setMyContactInfo( knem_cookie_t ){ std::cout << "do nothing line " << __LINE__ << std::endl;}
+    ContactInfo* getMyContactInfoP( void ){ std::cout << "do nothing line " << __LINE__ << std::endl;}*/
 #endif
+
 
 #ifdef CHANDYLAMPORT
     void posh_close_communication_channels( void );

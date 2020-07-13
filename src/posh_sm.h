@@ -22,6 +22,11 @@
 #define _POSH_SM_H_
 
 #include "posh_contactinfo.h"
+#include "posh_endpoint.h"
+#include "posh_communication.h"
+
+#include <boost/interprocess/managed_shared_memory.hpp>
+namespace bip = boost::interprocess;
 
 int shmem_sm_put( int, void*, const void*, size_t );
 int shmem_sm_get( int, void*, const void*, size_t );
@@ -35,8 +40,16 @@ public:
     }
 
     std::ostream& doprint( std::ostream& os ) const {
-        return os << "SM -- rank " << rank;
+        return os << "SM -- rank " << rank << " " << hostname;
     }
+    std::istream& doinput( std::istream& is ) {
+        std::string sep, sep2, type, host, _rank;
+        is >> type >> sep >> sep2 >>  _rank >> host;
+        this->rank = std::stoi( _rank );
+        this->hostname = host;
+       return is;
+    }
+
 
     /*
     neighbor_comm_type_t getType(){
@@ -57,7 +70,7 @@ public:
 
 class SMneighbor_t{
  public:
-    managed_shared_memory remoteHeap;
+    bip::managed_shared_memory remoteHeap;
 };
 
 class Endpoint_SM_t : public Endpoint_t {
@@ -67,12 +80,30 @@ protected:
     
 public:    
     /* TODO */
-    void init_end(){}
-    void init(){}
-    int finalize(){}
+    void init_end(){
+        char hostname[HOST_NAME_MAX+1];
+        gethostname( hostname, HOST_NAME_MAX );
+        this->ci.setHostname( hostname );
+        
+        int rank = myInfo.getRank();
+        this->ci.setRank( rank );
+   }
+    /*    void init(){
+        char hostname[HOST_NAME_MAX+1];
+        gethostname( hostname, HOST_NAME_MAX );
+        this->ci.setHostname( hostname );
+        
+        int rank = myInfo.getRank();
+        this->ci.setRank( rank );
+        }*/
+    int finalize(){ return 0; }
+    neighbor_comm_type_t getType() { return TYPE_SM; }
     
     ContactInfo* getMyContactInfo(){
         return &(this->ci);
+    }
+    void setMyContactInfo( int rank ) {
+        this->rank = rank; 
     }
 };
 
@@ -86,11 +117,11 @@ protected:
 
     Communication_SM_t() {}
     
-    void init( int );
+    void init_comm( int );
     void setContactInfo( ContactInfo& ci ) {
         // nothing
     }
-    void reopen(){ init(this->rank); }
+    void reopen(){ init_end( ); }
     void close( void ){
 	// TODO
 	//	    auto* ptr = &(this->neighbors[rank].comm_channel.sm_channel.shared_mem_segment);
@@ -99,12 +130,11 @@ protected:
        ptr->~sm_comm_channel_t();*/
 
     }
-    int posh__get(  void* target, const void* source, size_t size, int pe ){
-        return shmem_sm_get( pe, target, source, size );
+    void posh__get(  void* target, const void* source, size_t size, int pe ){
+        shmem_sm_get( pe, target, source, size );
     }
-    int posh__put(  void* target, const void* source, size_t size, int pe ){
-        //        std::cout << "put" << std::endl;
-        return shmem_sm_put( pe, target, source, size );
+    void posh__put(  void* target, const void* source, size_t size, int pe ){
+        shmem_sm_put( pe, target, source, size );
     }
 
 };

@@ -75,7 +75,10 @@ int shmem_mpi_iget( int pe, void* target, const void* source, size_t size ){
     return 0;
 }
 
-void shmem_mpi_init( ){
+int shmem_mpi_init( ){
+
+    mpi::environment env;
+    mpi::communicator world;
 
     /* Create a shared window for my own shared heap */
 
@@ -92,10 +95,10 @@ void shmem_mpi_init( ){
         std::cout << "Good: the memory model is unified" << std::endl;
     }
 
-    
     /* Set a contact information */
-    
-    myInfo.setMyContactInfo(  myInfo.world.rank() );
+    //setMyContactInfo( rank );
+    // myInfo.setMyContactInfo(  myInfo.world.rank() );
+    //this->ci.setRank( rank );
 
 #ifdef _DEBUG
     std::cout << "My contact info:" << std::endl;
@@ -120,7 +123,8 @@ void shmem_mpi_init( ){
     MPI_Win_unlock( pe, myInfo.window ); 
 
     std::cout << myInfo.getRank() << " got " << toto << " from disp " << disp << std::endl;
-#endif 
+#endif
+    return world.rank();
 }
 
 
@@ -131,6 +135,8 @@ void shmem_mpi_finalize(  ){
     MPI_Win_detach( myInfo.window, _getMyBaseAddress() );
     
 }
+
+/* TODO ça doit aller dans le launcher */
 
 void shmem_mpi_exchange_ci( std::vector<ContactInfo*> &ci_all ){
     #if 0

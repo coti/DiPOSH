@@ -31,73 +31,6 @@
  * functions such as shmem_put32.
  */
 
-#ifdef _WITH_NMAD
-nm_comm_t p_comm = NULL; 
-#endif // _WITH_NMAD
-
-void shmem_barrier_all( ){
-#if !defined( MPICHANNEL ) && !defined( MPIHUBCHANNEL )
-#ifdef _WITH_NMAD
-    if( NULL == p_comm )
-        p_comm = nm_comm_world( "nm_posh_barrier" );
-    nm_coll_barrier( p_comm, TAG_BARRIER );
-#else
-    shmem_barrier_naive();
-#endif // _WITH_NMAD
-#else
-    MPI_Barrier( myInfo.world );
-#endif 
-}
-
-void shmem_barrier_naive(){
-    int ROOT = 0;
-    Collective_t* coll = myInfo.getCollective();
-    int myrank = myInfo.getRank();
-    int mysize = myInfo.getSize();
-    bool rc;
-
-#ifdef _DEBUG
-    if( shmem_my_pe() == ROOT ) std::cout << " - - - - - - - - - - - " << std::endl;
-#endif  
-
-    boost::interprocess::named_mutex mtx(boost::interprocess::open_or_create, "shmem_barrier_ROOT" );
-
-   /* algo de merde : reduce + bcast */
-
-    if( _shmem_unlikely( myrank == ROOT ) ) {
-        mtx.lock( );   
-        while( coll->cnt != ( mysize - 1 ) ) {
-            mtx.unlock( );
-            usleep( SPIN_TIMER );
-            mtx.lock( );
-        }
-        for( int i = 0 ; i < mysize ; i++ ) {
-            if( _shmem_likely( i != myrank ) ) {
-                shmem_int_finc( &(coll->cnt), i );
-            }
-        }
-    } else {
-
-        /* send a signal to the root process:
-           increment its collective counter */
-        mtx.lock( );
-        shmem_int_finc( &(coll->cnt), ROOT );
-        mtx.unlock( );
-
-        /* wait until my local counter has been incremented by the root process */
-        while( coll->cnt == 0 ) {
-            usleep( SPIN_TIMER );
-        }
-    }
-
-    /* reset collective data structure */
-
-    myInfo.collectiveReset();
-    if( _shmem_unlikely( myrank == ROOT ) ) {
-          mtx.unlock( );
-    }
-}
-
 /* Performs a barrier operation on a subset of processing elements (PEs).
  * The shmem_barrier() routine does not return until the subset of PEs specified by
  * PE_start, logPE_stride and PE_size, have entered this routine at the same point of
@@ -110,9 +43,6 @@ void shmem_barrier_naive(){
  * is necessary in this case.
  */
 
-void shmem_barrier( int PE_start, int logPE_stride, int PE_size, long *pSync ){
-    ;;
-}
 
 /* Provides a separate ordering on the sequence of puts issued by this PE to each
  * destination PE.

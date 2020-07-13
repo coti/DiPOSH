@@ -25,7 +25,7 @@
 #include <vector>
 #include "posh_communication.h"
 #include "posh_contactinfo.h"
-#include "shmem_internal.h"
+//#include "shmem_internal.h"
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 using namespace boost::interprocess;
@@ -41,8 +41,9 @@ class Neighbor_t {
 
     //Communication_t* communications;
     /* List of all the communication channels I have with this neighbor */
-    std::vector<Communication_t> channels;
-    std::vector<ContactInfo> neigh_ci;
+    //boost::ptr_vector<Communication_t> channels; // not initialized
+    // boost::ptr_vector<ContactInfo> neigh_ci;
+    //std::unique_ptr<ContactInfo> ci;
 
     /* My favorite one */
     Communication_t* communications;
@@ -54,9 +55,20 @@ class Neighbor_t {
         this->hostname = "";
         //        this->comm_type = NONE;
     }
-    ~Neighbor_t(){
+    Neighbor_t( std::string name ){
+        this->hostname = name;
+        //        this->comm_type = NONE;
+    }
+   ~Neighbor_t(){
         this->hostname.clear();
     }
+    void setHostname( std::string name ){
+        this->hostname = name;
+        //        this->comm_type = NONE;
+    }
+    std::string getHostname( ){ return this->hostname; }
+    void setRank( int rank ) { this->rank = rank; }
+    int getRank(){ return this->rank; }
 
 };
 

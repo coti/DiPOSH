@@ -18,6 +18,4 @@
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define TAG_BARRIER 0x1
 
-void shmem_barrier_naive( void );

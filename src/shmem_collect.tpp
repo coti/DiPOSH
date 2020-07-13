@@ -96,7 +96,8 @@ template <class T, class V> void shmem_template_collect_flat( T* target, const T
     
     /* In-place bradcast */
 
-    shmem_broadcast_template( const_cast<T*>( target ), const_cast<const T*>( target ), nelems * PE_size, ROOT, PE_start, logPE_stride, PE_size, pSync );
+    // shmem_broadcast_template( const_cast<T*>( target ), const_cast<const T*>( target ), nelems * PE_size, ROOT, PE_start, logPE_stride, PE_size, pSync );
+    myInfo.collectives->posh_broadcast( const_cast<T*>( target ), const_cast<const T*>( target ), nelems * PE_size, ROOT, PE_start, logPE_stride, PE_size, pSync );
 
 #ifdef _DEBUG
     if( myInfo.getRank() == ROOT ) {

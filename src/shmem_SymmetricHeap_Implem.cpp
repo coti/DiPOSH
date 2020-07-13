@@ -57,8 +57,23 @@ void SymmetricHeap::createSharedHeap( unsigned long long int size ) {
 
 }
 
+bool SMexists( char* name ){ /* From https://stackoverflow.com/questions/25574401/is-there-a-better-way-to-check-for-the-existence-of-a-boost-shared-memory-segmen */
+    using namespace boost::interprocess;
+    try {
+        managed_shared_memory segment(open_only, name );
+        return segment.check_sanity();
+    } 
+    catch (const std::exception &ex) {
+        //        std::cout << "managed_shared_memory ex: "  << ex.what();
+    }
+    return false;
+}
+
 void SymmetricHeap::deleteSharedHeap( ){
-    shared_memory_object::remove( this->heapName );
+    if( SMexists( this->heapName ) ){
+        //        std::cout << "Delete " << this->heapName << std::endl;
+        shared_memory_object::remove( this->heapName );
+    }
 }
 
 char* SymmetricHeap::buildHeapName( int _rank ) {

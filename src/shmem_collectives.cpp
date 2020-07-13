@@ -21,7 +21,11 @@
 #include "shmem_internal.h"
 
 #include "shmem_collectives.h"
+#include "posh_collectives.h"
+#include "posh_coll_flat.h"
+#include "posh_coll_mpi.h"
 
+#include "posh_collectives.tpp"
 
 void MeMyselfAndI::setCollectiveType( unsigned char _type ) {
     this->collective->type = _type;
@@ -43,7 +47,7 @@ void* MeMyselfAndI::getCollectiveBuffer( ) {
     return this->collective->ptr;
 }
 
-void MeMyselfAndI::collectiveInit() {
+void MeMyselfAndI::collectiveInit( char* coll_type ) {
     this->collective = (Collective_t*) _shmallocFake( sizeof( Collective_t ) );
     this->collective->ptr  = NULL;
     this->collective->cnt  = 0;
@@ -53,6 +57,46 @@ void MeMyselfAndI::collectiveInit() {
     this->collective->space = -1;
 #endif
 
+    /* Initialize the collectives I am going to use */
+
+    if( NULL != coll_type ) { /* The user specified which collective communication module they want */
+        if ( 0 == strcmp( coll_type, "MPI" ) ) {
+#if 1 //def MPICHANNEL
+            this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_MPI_t };
+#endif
+        }
+        else{
+            std::cout << "Could not understand the collective type specified. Fallback: flat"<< std::endl;
+            this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_flat_t };
+        }
+    } else {
+        /* The user did not specify which collective communication module they want.
+           Which communication channel are we using? */    
+        if( NULL == comm_channel ) {
+#if 1 //def MPICHANNEL
+            this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_MPI_t };
+        }
+#elif  _WITH_TCP
+            /***/
+#endif
+        else {
+            if ( 0 == strcmp( comm_channel, "MPI" ) ) {            
+#if 1 //def MPICHANNEL
+                this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_MPI_t };
+#endif // MPICHANNEL
+            }
+            
+            else {/* Last resort: the flat one */
+                this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_flat_t };
+            }
+        }
+    }
+    
+    /* TODO check that all the processes use the same module */
+    
+
+    /* DOTO send this to the flat module */
+    
     char* mutName;
     if( myInfo.getRank() == 0 ) {
         asprintf( &mutName, "mtx_shmem_gather_root" );
@@ -85,6 +129,475 @@ void MeMyselfAndI::collectiveReset() {
 Collective_t*  MeMyselfAndI::getCollective(){
     return this->collective;
 }
+
+/* Barriers */
+
+void shmem_barrier(int PE_start, int logPE_stride, int PE_size, long *pSync ){
+    myInfo.collectives->posh_barrier( PE_start, logPE_stride, PE_size, pSync );
+}
+
+void shmem_barrier_all(){
+    myInfo.collectives->posh_barrier_all();
+}
+
+/* Broadcasts */
+
+void shmem_broadcast32( void* target, const void* source,  size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, long* pSync ){
+    myInfo.collectives->posh_broadcast32( (int32_t*) target, (const int32_t*) source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+}
+
+void shmem_broadcast64(void* target, const void* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, long* pSync ){
+    myInfo.collectives->posh_broadcast32( (int64_t*) target, (const int64_t*) source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+}
+    
+void shmem_short_broadcast( short* target, const short* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, short* pSync ){
+     myInfo.collectives->posh_short_broadcast( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+}
+    
+void shmem_int_broadcast( int* target, const int* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, int* pSync ){
+    myInfo.collectives->posh_int_broadcast( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+}
+
+void shmem_long_broadcast( long* target, const long* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, long* pSync ){
+    myInfo.collectives->posh_long_broadcast( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+}
+    
+void shmem_longlong_broadcast( long long* target, const long long* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, long long* pSync ){
+    myInfo.collectives->posh_longlong_broadcast( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+}
+    
+void shmem_float_broadcast( float* target, const float* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, float* pSync ){
+    myInfo.collectives->posh_float_broadcast( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+}
+    
+void shmem_double_broadcast( double* target, const double* source, size_t nelems, int PE_root, int PE_start, int logPE_stride, int PE_size, double* pSync ){
+    myInfo.collectives->posh_double_broadcast( target, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync );
+} 
+
+/* Reductions */
+
+
+   // AND
+    
+int shmem_uchar_and_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_short_and_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_ushort_and_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_int_and_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_uint_and_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_long_and_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_ulong_and_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_longlong_and_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_ulonglong_and_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_and_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_and_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+    int shmem_and_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_and_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_and_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_and );
+}
+
+// OR
+
+int shmem_uchar_or_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_short_or_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_ushort_or_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_int_or_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_uint_or_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_long_or_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_ulong_or_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_longlong_or_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_ulonglong_or_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_or_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_or_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_or_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_or_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_or );
+}
+    
+// XOR
+
+int shmem_uchar_xor_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_short_xor_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_ushort_xor_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_int_xor_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_uint_xor_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_long_xor_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_ulong_xor_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_longlong_xor_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_ulonglong_xor_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_xor_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_xor_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_xor_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_xor_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_xor );
+}
+
+// MAX
+
+int shmem_short_max_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_ushort_max_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_int_max_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_uint_max_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_long_max_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_ulong_max_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_longlong_max_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_ulonglong_max_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+
+int shmem_max_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+int shmem_max_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_max );
+}
+
+// MIN
+
+int shmem_short_min_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_ushort_min_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_int_min_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_uint_min_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_long_min_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_ulong_min_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_longlong_min_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_ulonglong_min_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+
+int shmem_min_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+int shmem_min_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_min );
+}
+
+// SUM
+
+int shmem_short_sum_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_ushort_sum_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_int_sum_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_uint_sum_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_long_sum_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_ulong_sum_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_longlong_sum_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_ulonglong_sum_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+
+int shmem_sum_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+int shmem_sum_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_sum );
+}
+
+// TODO: complex
+
+// PROD
+
+int shmem_short_prod_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_ushort_prod_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_int_prod_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_uint_prod_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_long_prod_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_ulong_prod_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_longlong_prod_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_ulonglong_prod_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+
+int shmem_prod_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+int shmem_prod_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce) {
+    return myInfo.collectives->posh_reduce( dest, source, nreduce,  &_shmem_operation_template_prod );
+}
+// TODO: complex
+    
 
 
 

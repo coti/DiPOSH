@@ -22,7 +22,11 @@
 #define _POSH_HUB_H_
 
 #include "posh_contactinfo.h"
+#include "posh_endpoint.h"
+#include "posh_communication.h"
 
+#include <mpi.h>
+#include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 namespace mpi = boost::mpi;
 
@@ -45,7 +49,14 @@ public:
     }
 
     std::ostream& doprint( std::ostream& os ) const {
-        return os << "HUB -- rank " << rank;
+        return os << "HUB -- rank " << this->rank << " " << hostname;
+    }
+    std::istream& doinput( std::istream& is ) {
+        std::string type, sep, sep2, host, _rank;
+        is >> type >> sep >> sep2 >> _rank >> host;
+        this->rank = std::stoi( _rank );
+        this->hostname = host;
+        return is;
     }
 
     /*
@@ -86,6 +97,10 @@ public:
     ContactInfo* getMyContactInfo(){
         return &(this->ci);
     }
+    void setMyContactInfo( int rank ){
+        this->ci.setRank( rank );
+    }
+    neighbor_comm_type_t getType() { return TYPE_HUB; }
 };
 
 class Communication_hub_t : public Communication_t, public HUBneighbor_t, public Endpoint_hub_t {
@@ -104,8 +119,8 @@ protected:
     }
     void reopen(){ init(this->rank); } // TODO
     void close( void ){} // TODO
-    int posh__get(  void* target, const void* source, size_t size, int pe );
-    int posh__put(  void* target, const void* source, size_t size, int pe );
+    void posh__get(  void* target, const void* source, size_t size, int pe );
+    void posh__put(  void* target, const void* source, size_t size, int pe );
 
 };
 

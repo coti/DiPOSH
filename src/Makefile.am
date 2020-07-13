@@ -35,12 +35,12 @@ libshmem_la_SOURCES = shmem_accessible.cpp   shmem_lock.cpp 		\
 		shmem_alloc.cpp        shmem_MeMyselfAndI_implem.cpp    \
 		shmem_atomic.cpp       shmem_collect.cpp		\
 		shmem_barrier.cpp      shmem_ptr.cpp			\
-		shmem_bcast.cpp        shmem_put.cpp			\
+		shmem_put.cpp	       shmem_init.cpp 	         	\
 		shmem_collectives.cpp  shmem_SymmetricHeap_Implem.cpp	\
 		shmem_get.cpp          shmem_sync.cpp			\
-		shmem_init.cpp         shmem_reduce.cpp			\
 		shmem_utils.cpp
 
+# shmem_bcast.cpp shmem_reduce.cpp	
 
 #################################################################################
 # RTE, interface with the Launcher
@@ -78,6 +78,17 @@ libshmem_la_SOURCES += posh_knem.cpp posh_knem.h
 endif
 if ENABLE_COMM_HUB_MPI
 libshmem_la_SOURCES += posh_hub.cpp posh_hub.h
+endif
+
+#################################################################################
+# Collective communications
+#################################################################################
+
+libshmem_la_SOURCES +=  posh_coll_flat.cpp posh_coll_flat.h \
+			posh_coll_binomial.cpp posh_coll_binomial.tpp posh_coll_binomial.h \
+			posh_collectives.cpp posh_collectives.tpp posh_collectives.h
+if ENABLE_COMM_MPI
+libshmem_la_SOURCES += posh_coll_mpi.cpp posh_coll_mpi.h
 endif
 
 #################################################################################

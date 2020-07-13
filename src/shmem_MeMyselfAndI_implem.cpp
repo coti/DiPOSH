@@ -21,6 +21,8 @@
 
 #include "shmem_internal.h"
 #include <fstream>
+#include <sstream>
+#include <string>
 
 #ifdef CHANDYLAMPORT
 #include <boost/filesystem.hpp>
@@ -41,7 +43,7 @@
 #ifdef MPICHANNEL
 #include "posh_mpi.h"
 #endif
-#ifdef MPIHUBCHANNEL
+#if 1 //def MPIHUBCHANNEL
 #include "posh_hub.h"
 #endif
 #include "posh_tcp.h"
@@ -64,23 +66,6 @@ extern "C" {
 #include "posh_launcher_sm.h"
 
 #ifdef DISTRIBUTED_POSH
-#if 0  // replaced by doprint in each ContactInfo_* class
-std::ostream& operator << ( std::ostream &out, ContactInfo_TCP& ci ){
-
-    out << " " << ci.getRank() << " -- ";
-    if( TYPE_TCP == ci.getType() ) {
-        out << " " << ci.getHostname() << " ";
-        
-        char ipAddress[INET6_ADDRSTRLEN];
-        uint32_t ip_int = ci.getAddr();      
-        inet_ntop( AF_INET, (const void*)&ip_int, ipAddress, sizeof(ipAddress));      
-        out << ipAddress << " " ;
-        out << (int)ci.getPort();
-    }
-    return out;
-}
-#endif
-
 std::ostream& operator<< ( std::ostream& out, Neighbor_t& n ){
     map<neighbor_comm_type_t, std::string> commtype;
     commtype[TYPE_TCP] = "TCP";
@@ -92,10 +77,11 @@ std::ostream& operator<< ( std::ostream& out, Neighbor_t& n ){
     out << "Neighbor " << n.rank;
     out << " - Type " << commtype[n.comm_type] << std::endl;
     out << "Contact information: " << std::endl;
-    for( auto i = n.neigh_ci.begin() ; i != n.neigh_ci.end() ; ++i ){
-        out << *i;
-        out << std::endl;
-    }
+    out << myInfo.neigh_ci[n.rank] << std::endl;
+    //    for( auto i = n.neigh_ci.begin() ; i != n.neigh_ci.end() ; ++i ){
+    //        out << *i;
+    //        out << std::endl;
+    //    }
     return out;
 }
 
@@ -132,12 +118,12 @@ void MeMyselfAndI::setStarted( bool _started ){
     this->shmem_started = _started;
 }
 
-Neighbor_t* MeMyselfAndI::getNeighbors() {
-    return this->neighbors;
-}
-
 Neighbor_t* MeMyselfAndI::getNeighbor( int rank ) {
     return &(this->neighbors[rank]);
+}
+
+std::vector<Neighbor_t>* MeMyselfAndI::getNeighbors( ) {
+    return &(this->neighbors);
 }
 
 boost::interprocess::named_mutex* MeMyselfAndI::getLock( long _lock ){
@@ -235,269 +221,451 @@ std::string MeMyselfAndI::getmyhostname(){
     return this->hostname;
 }
 
+
 void MeMyselfAndI::allocNeighbors( int nb ) {
-    this->neighbors = new Neighbor_t[nb];
+    //    this->neighbors.reserve( nb );
+    // The allocation itself (push_back) is done later */
+    /*   for( int i = 0 ; i < nb ; i++ ) {
+        //  this->neighbors[i] = std::unique_ptr<Neighbor_t>( nullptr );
+        }*/
 }
 
-/* This should go behind an interface */
-void MeMyselfAndI::initNeighborNULL( int neighborrank ) {
+/* In this function, initialize the *local* endpoints, ie how I can be contacted.
+   All the endpoints we can be open are put in a vector: myEndpoints.
+   If an endpoint cannot be initialized, it throws an exception. It is caught silently 
+   and we don't put the endpoint in the vector of endpoints.
+   If we want to use a specific endpoint, its name is given in comm_channel.
+   At the end, if no endpoint has been initialized, the vector is empty -> return an error.
+   This function is way too long and way too redundant -> TODO refactor.
+*/
 
-    /* FIXME */
-    
-    this->neighbors[neighborrank].comm_type = NONE;
-    std::cerr << "Unknown communication channel type received for " << neighborrank << std::endl;
-}
-
-void MeMyselfAndI::initNeighborSM( int neighborrank ) {
-    this->neighbors[neighborrank].comm_type = TYPE_SM;
-    this->neighbors[neighborrank].communications = new Communication_SM_t();    
-    this->neighbors[neighborrank].communications->init( neighborrank );
-#ifdef _DEBUG 
-    std::cout << "Init neighbor  " << neighborrank << " SM" << std::endl;
-#endif // _DEBUG
-    
-    /*    char* _name; 
-    _name = myHeap.buildHeapName( neighborrank );
-    while( false == _sharedMemEsists( _name ) ) {
-        usleep( SPIN_TIMER );
-    }
-    managed_shared_memory remoteHeap(  open_only, _name );
-    this->neighbors[neighborrank].comm_channel.sm_channel.shared_mem_segment = std::move( remoteHeap );
-    this->neighbors[i]( open_only, _name );
-    free( _name ); */
-}
-
-#ifdef MPICHANNEL
-
-void MeMyselfAndI::initNeighborMPI( int neighborrank ) {
-
-
-    if( channel_priorities[ this->neighbors[neighborrank].comm_type ] < channel_priorities[ TYPE_MPI ] ) {
-        delete this->neighbors[neighborrank].communications;
-        this->neighbors[neighborrank].communications = new Communication_MPI_t();
-        this->neighbors[neighborrank].comm_type = TYPE_MPI;
-    }
-
-
-
-    /*
-    this->neighbors[neighborrank].comm_type = TYPE_MPI;
-    this->neighbors[neighborrank].communications = new Communication_MPI_t();
-    */
-    
-
-    
-#ifdef _DEBUG
-    std::cout << "Init neighbor  " << neighborrank << " MPI" << std::endl;
-#endif // _DEBUG
-    /* Nothing to do */
-}
-#endif // MPICHANNEL
-
-
-#ifdef _WITH_TCP
-void MeMyselfAndI::initNeighborTCP( int neighborrank, ContactInfo_TCP& ci ) {
-
-    //    this->neighbors[neighborrank].channels.push_back( Communication_TCP_t() );
-    // TOOD: fill the list
-
-    if( channel_priorities[ this->neighbors[neighborrank].comm_type ] < channel_priorities[ TYPE_TCP ] ) {
-        delete this->neighbors[neighborrank].communications;
-        this->neighbors[neighborrank].communications = new Communication_TCP_t();
-        this->neighbors[neighborrank].communications->setContactInfo( ci );
-        this->neighbors[neighborrank].comm_type = TYPE_TCP;
-#ifdef _DEBUG
-        std::cout << "Init neighbor " << neighborrank << " TCP" << std::endl;
-        std::cout << " with CI " << ci << std::endl;
-#endif // _DEBUG
-    }
-
- /*
-    this->neighbors[neighborrank].comm_type = TYPE_TCP;
-    // this->neighbors[neighborrank].comm_channel.tcp_channel.socket = -1;;
-    this->neighbors[neighborrank].communications = new Communication_TCP_t();
-    this->neighbors[neighborrank].communications->setContactInfo( ci );
-#ifdef _DEBUG
-    std::cout << "Init neighbor " << neighborrank << " TCP" << std::endl;
-    std::cout << " with CI " << ci << std::endl;
-#endif // _DEBUG
-    */
-}
-#endif // _WITH_TCP
-
-#ifdef _WITH_KNEM
-void MeMyselfAndI::initNeighborKNEM( int neighborrank, ContactInfo_KNEM& ci ) {
-    TODO
-
-    /*
-    this->neighbors[neighborrank].comm_type = TYPE_KNEM;
-    this->neighbors[neighborrank].communications = new Communication_KNEM_t();
-    this->neighbors[neighborrank].communications->setContactInfo( ci );*/
-}
-
-KNEMendpoint_t* MeMyselfAndI::getMyEndpointKNEM(){
-    return &(this->myEndpointKNEM);
-}
-#endif // _WITH_KNEM
-
-#ifdef _WITH_NMAD
-void MeMyselfAndI::initNeighborNMAD( int neighborrank, ContactInfo_NMAD& ci ) {
-
-    TODO
-    
-    /*    this->neighbors[neighborrank].comm_type = TYPE_NMAD;
-    this->neighbors[neighborrank].communications = new Communication_NMAD_t();
-    this->neighbors[neighborrank].communications->setContactInfo( ci );*/
-    
-}
-NMADendpoint_t* MeMyselfAndI::getMyEndpointNMAD(){
-    return &(this->myEndpointNMAD);
-}
-
-#endif // _WITH_NMAD
-
-#ifdef MPIHUBCHANNEL
-
-void MeMyselfAndI::initNeighborHub( int neighborrank ) {
-
-    /* is this guy on the same node as me? */
-
-    char* _name;
-    /*    _name = myHeap.buildHeapName( neighborrank );
-    if(  true == _sharedMemEsists( _name ) ) { 
-        this->neighbors[neighborrank].comm_type = TYPE_SM;
-        this->neighbors[neighborrank].communications = new Communication_SM_t();    
-        this->neighbors[neighborrank].communications->init( neighborrank );
-#ifdef _DEBUG 
-        std::cout << "Init neighbor  " << neighborrank << " SM" << std::endl;
-#endif // _DEBUG        
-    } else { */
-        this->neighbors[neighborrank].comm_type = TYPE_HUB;
-        this->neighbors[neighborrank].communications = new Communication_hub_t();
-        //    std::cout << "Init HUB neighbor " << neighborrank << std::endl;
-#ifdef _DEBUG 
-        std::cout << "Init neighbor  " << neighborrank << " HUB" << std::endl;
-#endif // _DEBUG
-	// }
-	//    free( _name );
-}
-
-Endpoint_hub_t* MeMyselfAndI::getMyEndpointHub(){
-    return &(this->myEndpointHub);
-}
-
-
-#endif // MPIHUBCHANNEL
-
-void MeMyselfAndI::communicationInit( char* comm_channel ){
+int MeMyselfAndI::communicationInit( char* comm_channel ){
 
     myHeap.setupSymmetricHeap(); // should be in the SM component
 
-#ifdef DISTRIBUTED_POSH
+    /* No channel is provided -> open whatever I can open */
+    
     if( NULL == comm_channel ) {
-        // TODO improve this!!
-	//	this->myEndpoint = &( this->myEndpointHub );
-	this->myEndpoint = &( this->myEndpointMPI );
-                
-        this->myEndpoint->init_end();
-#ifdef _WITH_TCP
-        /* This must be done only once the communication thread is up and initialized */
-        while( ! this->getMyContactInfoP()->isReady() ){
-            ;;
+        try{ /* SM */
+            myEndpoints.push_back( new Endpoint_SM_t );
+            myEndpoints.back().init_end();
+        } catch( int ex ){
+            /* Should not happen */
+        std::cerr << "Could not open the shared memory communication component" << std::endl;
         }
-#endif // _WITH_TCP
-    }
-    else { /* FIXME: use an object to stop using dirty things like this */
+        
+#if 1 //def MPICHANNEL
+        try{ /* MPI */
+            myEndpoints.push_back( new Endpoint_MPI_t );
+            myEndpoints.back().init_end();
+        } catch( int ex ){
+            ;; /* silent */
+        }
+#endif // MPICHANNEL
+        
 #ifdef _WITH_TCP
-        if( 0 == strcmp( comm_channel, "TCP" ) ) {
-            this->myEndpoint.init( );        
-            /* This must be done only once the communication thread is up and initialized */
-            while( ! this->getMyContactInfoP()->isReady() ){
+        try{ /* TCP */
+            myEndpoints.push_back( new TCPendpoint_t );
+            myEndpoints.back().init_end();
+            while( ! e.isReady() ){
                 ;;
             }
+        } catch( int ex ){
+            ;; /* silent */
         }
 #endif // _WITH_TCP
-#ifdef MPICHANNEL
-        if( 0 == strcmp( comm_channel, "MPI" ) ) {
-            this->myEndpoint = new Endpoint_MPI_t();
-            this->myEndpoint->init_end();
-      }
-#endif // MPICHANNEL
+        
 #ifdef _WITH_KNEM
-        if( 0 == strcmp( comm_channel, "KNEM" ) ) {
-            this->myEndpoint->init();
+        try{ /* KNEM */
+            myEndpoints.push_back( new  Endpoint_KNEM_t);
+            myEndpoints.back().init();       
+        } catch( int ex ){
+            ;; /* silent */
         }
 #endif // _WITH_KNEM
+        
 #ifdef _WITH_NMAD
-        if( 0 == strcmp( comm_channel, "NMAD" ) ) {
-            this->myEndpoint->init();
+        try{ /* NMAD */
+            myEndpoints.push_back( new  Endpoint_NMAD_t);
+            myEndpoints.back().init_end();       
+        } catch( int ex ){
+            ;; /* silent */
         }
+#endif // _WITH_NMAD
+        
+#ifdef MPIHUBCHANNEL
+        try{ /* HUB */
+            myEndpoints.push_back( new  Endpoint_hub_t);
+            myEndpoints.back().init_end();
+        } catch( int ex ){
+            ;; /* silent */
+        }
+#endif // MPIHUBCHANNEL
+        
+    } else { /* if NULL == comm_channel */
+        if( 0 == strcmp( comm_channel, "SM" ) ) {
+            
+            try{ /* SM */
+                myEndpoints.push_back( new Endpoint_SM_t );
+                myEndpoints.back().init_end();
+            } catch( int ex ){
+                /* Should not happen */
+                std::cerr << "Could not open the shared memory communication component" << std::endl;
+            }
+            
+        } else if ( 0 == strcmp( comm_channel, "MPI" ) ) {            
+#if 1 //def MPICHANNEL
+            try{ /* MPI */
+                myEndpoints.push_back( new Endpoint_MPI_t );
+                myEndpoints.back().init_end();
+          } catch( int ex ){
+                ;; /* silent */
+            }
+#endif // MPICHANNEL
+            
+        } else if ( 0 == strcmp( comm_channel, "TCP" ) ) {           
+ #ifdef _WITH_TCP
+           try{ /* TCP */
+                myEndpoints.push_back( new TCPendpoint_t );
+                myEndpoints.back().init_end();
+                while( ! e.isReady() ){
+                    ;;
+                }
+            } catch( int ex ){
+                ;; /* silent */
+            }
+#endif // _WITH_TCP
+            
+        } else if ( 0 == strcmp( comm_channel, "KNEM" ) ) {           
+#ifdef _WITH_KNEM
+            try{ /* KNEM */
+                myEndpoints.push_back( new  Endpoint_KNEM_t);
+                myEndpoints.back().init_end();       
+            } catch( int ex ){
+                ;; /* silent */
+            }
+#endif // _WITH_KNEM
+            
+        } else if ( 0 == strcmp( comm_channel, "NMAD" ) ) {           
+#ifdef _WITH_NMAD
+            try{ /* NMAD */
+                myEndpoints.push_back( new  Endpoint_NMAD_t);
+                myEndpoints.back().init_end();       
+            } catch( int ex ){
+                ;; /* silent */
+            }
+#endif // _WITH_NMAD
+            
+        } else if ( 0 == strcmp( comm_channel, "HUB" ) ) {           
+#ifdef MPIHUBCHANNEL
+            try{ /* HUB */
+                myEndpoints.push_back( new  Endpoint_hub_t);
+                myEndpoints.back().init_end();
+            } catch( int ex ){
+                ;; /* silent */
+            }
+#endif // MPIHUBCHANNEL
+        }        
+
+    } /* if NULL == comm_channel */
+
+    /* Did I open anything? */
+    
+    if( myEndpoints.size() == 0 ) {
+        std::cerr << "Could not open any communication component. Abort." << std::endl;
+        return -1;
+    }
+
+    return 0;
+
+}
+
+/* This is necessary because the number of endpoints might not be the same on all 
+   the neighbors -> Allgatherv 
+   TODO: support Padico
+*/
+
+void gatherContactInfo(){
+
+    int nb, size, total;
+    int i, j;
+    size = myInfo.getSize();
+    
+    /* How many endpoints do I have? */
+
+    nb = myInfo.myEndpoints.size();
+    //    std::cout << "I have " << nb << " endpoints" << std::endl;
+
+    /* How many endpoints do the other ones have? */
+
+    int nb_all[ size ];
+    MPI_Allgather( &nb, 1, MPI_INT, &nb_all[0], 1, MPI_INT, MPI_COMM_WORLD );
+
+    /* Which type? */
+
+    int displ[size];
+    std::vector<neighbor_comm_type_t> myep; // more convenient in a vector
+    for( i = 0 ; i < nb ; i++ ) {
+        myep.push_back( myInfo.myEndpoints[i].getType() );
+    }
+    total = 0;
+    for( i = 0 ; i < size ; i++ ){
+        displ[i] = total;
+        total += nb_all[i];
+    }
+    neighbor_comm_type_t alltypes[total];    
+
+    MPI_Allgatherv( &myep[0], nb, MPI_INT,
+                    &alltypes[0], nb_all, displ, MPI_INT, MPI_COMM_WORLD );
+
+    /* The contact info are sent as strings -> receive their sizes */
+
+    int mylen[nb];
+    int alllen[total];    
+    std::stringstream myci;
+    for( i = 0 ; i < nb ; i++ ){
+        std::stringstream tmp;
+        //        std::cout <<  *(myInfo.myEndpoints[i].getMyContactInfo()) << std::endl;
+        tmp << *(myInfo.myEndpoints[i].getMyContactInfo());
+        myci << tmp.str();
+        mylen[i] = tmp.str().size();
+    }
+
+    MPI_Allgatherv( &mylen[0], nb, MPI_INT,
+                    &alllen[0], nb_all, displ, MPI_INT, MPI_COMM_WORLD );
+
+    int mytotallen = myci.str().size();
+    int displ2[size];
+    int alltotallen[size];
+    int totaltotallen = 0;
+    for( i = 0 ; i < size ; i++ ){
+        alltotallen[i] = 0;
+        for( j = 0 ; j < nb_all[i] ; j++ ) {
+            alltotallen[i] += alllen[ displ[i] + j];
+        }
+        displ2[i] = totaltotallen;
+        totaltotallen += alltotallen[i];
+    }
+
+    /* Receive them */
+
+    char allci[totaltotallen];    
+    MPI_Allgatherv( myci.str().c_str(), mytotallen, MPI_CHAR,
+                    &allci[0], alltotallen, displ2, MPI_CHAR, MPI_COMM_WORLD );
+
+    std::string myhostname =  myInfo.myEndpoints[0].getMyContactInfo()->getHostname();
+
+    /* Find what I have in common */
+
+    for( i = 0 ; i < size ; i++ ){
+        
+        Neighbor_t n;
+
+        if( i != myInfo.getRank() ){
+            neighbor_comm_type_t* ptr_type = alltypes + displ[i];
+            char* ptr_ci = allci + displ2[i];
+
+            //            std::cout << myInfo.getRank() << " Rank " << i << ": " << nb_all[i] << " interfaces" << std::endl;
+            
+            /* Take the interface in common that has the highest priority */
+
+            int maxpriority = 0;
+            neighbor_comm_type_t comm_type = NONE;
+
+            /* Select the highest priority */
+            
+            for( j = 0 ; j < nb_all[i] ; j++ ) {
+
+                /* We need to read the CI in order to have the hostname;
+                   necessary for the SM component */
+                
+                std::stringstream s;
+                char toto[512];
+                
+                memcpy( toto, ptr_ci, alllen[ displ[i] + j] );
+                toto[alllen[ displ[i] + j]] = '\0';
+                s << toto;
+                
+                ptr_ci += alllen[ displ[i] + j];
+
+                /*    for( auto &e: myep ){
+                    std::cout << e  << " : " << ptr_type[j]<< " " << (e == ptr_type[j]) << std::endl;
+                    }*/
+                
+                /* Do I have this type of interface? */
+                bool found = false;
+                for( auto &e: myep ){
+                    if( e == ptr_type[j] ) found = true;
+                }
+
+                //  if( std::find( myep.begin(), myep.end(), ptr_type[j] ) != myep.end() ){
+                if( found ==  true ) {
+                    //  std::cout << "Max priority: " << maxpriority;
+
+                    if( maxpriority < channel_priorities[ ptr_type[j] ] ){
+                        //                    std::cout << " I have " << channel_priorities[ ptr_type[j] ] << " with " << ptr_type[j] << std::endl;
+
+                        if( ptr_type[j] == TYPE_SM ) {
+                            ContactInfo_SM ci;
+                            s >> ci;
+                            /* Keep the SM interface only if we have the same hostname */
+                            if( 0 != myhostname.compare( ci.getHostname() ) ){
+                                continue;
+                            }
+                        }
+
+                        //                        std::cout << myInfo.getRank() << " take " << ptr_type[j] << std::endl;
+                        
+                        maxpriority = channel_priorities[ ptr_type[j] ];
+                        comm_type = ptr_type[j];
+                    }
+
+                }
+            }
+
+            if( comm_type == NONE ) {
+                std::cerr << myInfo.getRank() << " Could not find any common interface to communicate with " << i << std::endl;
+                exit( -1 );
+            }
+            
+            /* Plug the contact info and the neighbor */
+            ptr_ci = allci + displ2[i];
+
+            for( j = 0 ; j < nb_all[i] ; j++ ) {
+                
+                std::stringstream s;
+                char toto[512];
+
+                //std::cout << "Type: " << ptr_type[j] << std::endl;
+
+                memcpy( toto, ptr_ci, alllen[ displ[i] + j] );
+                toto[alllen[ displ[i] + j]] = '\0';
+                //                std::cout << "CI: " <<  toto << std::endl;
+                s << toto;
+                
+                ptr_ci += alllen[ displ[i] + j];
+
+                /* Do I take this one? */
+                
+                if( ptr_type[j] == comm_type ) {
+                                      
+                    if( ptr_type[j] == TYPE_SM ) {
+                        ContactInfo_SM ci;
+                        s >> ci;
+                        //    n.neigh_ci.push_back( &ci );
+                        myInfo.neigh_ci.push_back( &ci );
+                        
+                        n.comm_type = TYPE_SM;
+                        n.communications = new Communication_SM_t();    
+                        n.communications->init_comm( i );
+                        n.communications->setContactInfo( ci );
+
+                        //                        std::cout << myInfo.getRank() << " Init comm " << ci << " from " << s.str() <<  " with " << i << std::endl;
+                    } else if ( ptr_type[j] == TYPE_MPI ) {
+                        ContactInfo_MPI ci;
+                        s >> ci;
+                        myInfo.neigh_ci.push_back( &ci );
+                        //                       n.neigh_ci.push_back( &ci );
+
+                        n.communications = new Communication_MPI_t();
+                        n.comm_type = TYPE_MPI;
+                        n.communications->init_comm( i );
+                        n.communications->setContactInfo( ci );
+                        
+                        //         std::cout << myInfo.getRank() << " Push back " << ci << " from " << s.str() << std::endl;
+#ifdef _WITH_TCP
+                    } else if ( ptr_type[j] == TYPE_TCP ) {
+                        ContactInfo_TCP ci;
+                        s >> ci;
+                        myInfo.neigh_ci.push_back( &ci );
+                        //                       n.neigh_ci.push_back( &ci );
+                        n.comm_type = TYPE_TCP;
+                        n.communications = new Communication_TCP_t();
+                        n.communications->setContactInfo( ci );
+                        n.communications->init_comm( i );
+
+                        // std::cout << myInfo.getRank() << " Push back " << ci << std::endl;
+#endif // _WITH_TCP
+
+#ifdef _WITH_KNEM
+                    } else if ( ptr_type[j] == TYPE_KNEM ) {
+                        ContactInfo_KNEM ci;
+                        s >> ci;
+                        n.neigh_ci.push_back( &ci );
+
+                        n.comm_type = TYPE_KNEMM;
+                        n.communications = new Communication_KNEM_t();
+                        n.communications->setContactInfo( ci );
+                        n.communications->init_comm( i );
+
+                        
+#endif // _WITH_KNEM
+#ifdef _WITH_NMAD
+                   } else if ( ptr_type[j] == TYPE_NMAD ) {
+                        ContactInfo_NMAD ci;
+                        s >> ci;
+                        n.neigh_ci.push_back( &ci );
+                        n.comm_type = TYPE_NMAD;
+                        n.communications = new Communication_NMAD_t();
+                        n.communications->setContactInfo( ci );
+                        n.communications->init_comm( i );
 #endif // _WITH_NMAD
 #ifdef MPIHUBCHANNEL
-        if( 0 == strcmp( comm_channel, "HUB" ) ) {
-            std::cout << "INIT HUB" << std::endl;
-            this->myEndpoint = new Endpoint_hub_t();
-            this->myEndpoint->init_end();
+                    } else if ( ptr_type[j] == TYPE_HUB ) {
+                        ContactInfo_hub ci;
+                        s >> ci;
+                        myInfo.neigh_ci.push_back( &ci );
+                        n.comm_type = TYPE_HUB;
+                        n.communications = new Communication_hub_t();
+                        n.communications->setContactInfo( ci );
+                        n.communications->init_comm( i );
+#endif // MPIHUBCHANNEL
+                    }
+                    break;
+                }
+            }
+        } else {
+            /* Communicate with myself on the segment of SM */
+            
+            nb = myInfo.myEndpoints.size();
+            for( j = 0 ; j < nb ; j++ ) {
+                if( TYPE_MPI == myInfo.myEndpoints[j].getType() ) {
+                    //     ContactInfo ci =  myInfo.myEndpoints[j].getMyContactInfo(); 
+                    myInfo.neigh_ci.push_back( myInfo.myEndpoints[j].getMyContactInfo() );
+                    
+                    n.comm_type = TYPE_SM;
+                    n.communications = new Communication_SM_t();    
+                    n.communications->init_comm( i );
+                    //   n.communications->setContactInfo( ci );
+                    
+                }
+            }
         }
-#endif // _WITH_NMAD
+        myInfo.getNeighbors()->push_back( n );
+
     }
-#endif // DISTRIBUTED_POSH
+    
 }
+
+/* Initialize the neighbors, ie how I can communicate with each one of them 
+ */
 
 void MeMyselfAndI::initNeighbors( int nb, char* comm_channel ) {
 
-    char* filename;
-    std::string machine; 
-    int i;
-    bool local = true ; // ??
-    bool distributed = myInfo.getRTE()->isDistributed();
+    /* Get the other processes' contact information and initialize the communications */
 
-    /* Get the other processes' contact information */
+    gatherContactInfo();
 
-    /* ça c'est pssible uniquement si je suis sur du MPI.
-       Avec NewMadeleine pas besoin */
-
-#ifdef DISTRIBUTED_POSH 
-  
-    /* Pack my CI, shared it with the other processes */
-
-#ifdef _WITH_NMAD // FIXME TMP
-    if( distributed )
+#if 0
+    Trucs qui peuvent être utiles:
+    
         shmem_nmad_exchange_ci( );
-#endif // _WITH_NMAD
     
-    
-#ifdef MPICHANNEL
-    if( distributed ) {
-	std::cout << "Exchange CI" << std::endl;
-        std::vector<ContactInfo*> ci_all( world.size() );
+    std::vector<ContactInfo*> ci_all( world.size() );
         shmem_mpi_exchange_ci( ci_all );
-    }
-#endif // MPICHANNEL
-    
-#ifdef MPIHUBCHANNEL
-    if( distributed ) {
-        //        std::cout << "INIT HUB NEIGHBORS" << std::endl;
-        for( i = 0 ; i < myInfo.getSize() ; i++ ) {
-            if( myInfo.getRank() != i ) {
-                initNeighborHub( i );
-            }
-        }
-    }
-#endif // MPIHUBCHANNEL
 
-#endif // DISTRIBUTED_POSH 
-
-    /* TODO: non-distributed */
-
-    if( !distributed ) {
-        for( i = 0 ; i < myInfo.getSize() ; i++ ) {
-            if( myInfo.getRank() != i ) {
-                initNeighborSM( i );
-            }
-        }
-    }
-    
+#endif
+        
 #ifdef _DEBUG
     std::cout << myInfo.getRank() << " init done" << std::endl;
 #endif
@@ -528,47 +696,6 @@ std::string packMyContactInformation(){
     return std::string( hostname );
 }
 
-#ifdef DISTRIBUTED_POSH
-
-#ifdef _WITH_TCP
-void MeMyselfAndI::setMyContactInfo( int rank, uint32_t addr, uint16_t port ){
-    /* The hostname MUST be initialized somewhere else */
-
-    ContactInfo_TCP ci( rank, addr, port );
-    myContactInfo = &ci;
-    
-    /*    myContactInfo->setRank( rank );
-    myContactInfo->setType( TYPE_TCP );
-    myContactInfo->setAddr( addr, port );*/
-    
-
-#ifdef _DEBUG
-    std::cout << "My contact info: " << myContactInfo << std::endl;
-    std::cout << "My port: " << port << std::endl;
-#endif // _DEBUG
-}
-#endif // _WITH_TCP
-
-void MeMyselfAndI::setMyContactInfo( int rank ){
-    /* MPI version */
-    //    myContactInfo->setType( TYPE_MPI );
-}
-
-#ifdef _WITH_KNEM
-void MeMyselfAndI::setMyContactInfo( knem_cookie_t cookie ){
-    /* MPI version */
-    myContactInfo->setType( TYPE_KNEM );
-    myContactInfo->setCookie( cookie );
-}
-#endif //_WITH_KNEM
-
-/* Returns the *pointer* */
-ContactInfo* MeMyselfAndI::getMyContactInfoP( ){
-    return myContactInfo;
-}
-//#endif // !MPICHANNEL
-
-#endif // if DISTRIBUTED_POSH
 
 #ifdef CHANDYLAMPORT
 

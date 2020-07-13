@@ -56,6 +56,9 @@ fi
 # Boost
 #################################################################################
 
+# the hub requires Boost 1.67
+# other versions are okay with older versions
+
 AC_ARG_WITH(
     [boost],
     AS_HELP_STRING(
@@ -80,6 +83,8 @@ AC_CHECK_HEADERS([boost/bind.hpp], [],
     [AC_MSG_ERROR(You need the Boost Bind libraries.)])
 AC_CHECK_HEADERS([boost/system/error_code.hpp], [],
     [AC_MSG_ERROR(You need the Boost System libraries.)])
+AC_CHECK_HEADERS([boost/mpi.hpp], [],
+    [AC_MSG_ERROR(You need the Boost MPI libraries.)])
 #AC_LANG_POP([C++])
 
 AX_PTHREAD([], [AC_MSG_ERROR([Missing pthread library])])

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2020 LIPN - Universite Paris 13
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -24,9 +24,19 @@
 #ifndef _POSH_MPI_H_
 #define _POSH_MPI_H_
 
+#include <vector>
+#include <boost/mpi/environment.hpp>
+#include <boost/mpi/communicator.hpp>
+using namespace boost::mpi;
+namespace mpi = boost::mpi;
+
+#include "posh_contactinfo.h"
+#include "posh_endpoint.h"
+#include "posh_communication.h"
+
 int shmem_mpi_put( int, void*, const void*, size_t );
 int shmem_mpi_get( int, void*, const void*, size_t );
-void shmem_mpi_init( void );
+int shmem_mpi_init( void );
 
 void shmem_mpi_exchange_ci( std::vector<ContactInfo*> & );
 
@@ -48,10 +58,16 @@ public:
         this->type = type;
     }
     std::ostream& doprint( std::ostream& os ) const {
-        return os << "MPI -- rank " << rank;
+        return os << "MPI -- rank " << this->rank << " " << hostname;
+    }
+    std::istream& doinput( std::istream& is ) {
+        std::string type, sep, sep2, host, _rank;
+        is >> type >> sep >> sep2 >> _rank >> host;
+        this->rank = std::stoi( _rank );
+        this->hostname = host;
+        return is;
     }
 
-    /*
     int getRank(){
         return rank;
     }
@@ -66,14 +82,13 @@ public:
         this->type = type;
     }
     bool isReady() { return this->ready; }
-    */
-
 
 };
 
 
 /* Hardly anything here, but necessary for symmetry purpose */
 
+#if 1
 class Endpoint_MPI_t : public Endpoint_t {
 protected:
     ContactInfo_MPI ci;
@@ -81,15 +96,52 @@ public:
 
     Endpoint_MPI_t(){}
 
-    void init() {};
+    void setMyContactInfo( int rank ){
+        this->ci.setRank( rank );
+    }
+    neighbor_comm_type_t getType() { return TYPE_MPI; }
+    
+    /*    void init() {
+              char hostname[HOST_NAME_MAX+1];
+        gethostname( hostname, HOST_NAME_MAX );
+        this->ci.setHostname( hostname );
+        
+        int rank = shmem_mpi_init();
+        this->ci.setRank( rank );
+        } */// what is the difference?
     void init_end( ){
-        shmem_mpi_init();
+        char hostname[HOST_NAME_MAX+1];
+        gethostname( hostname, HOST_NAME_MAX );
+        this->ci.setHostname( hostname );
+        
+        int rank = shmem_mpi_init();
+        this->ci.setRank( rank );
     }
     ContactInfo* getMyContactInfo(){
         return &(this->ci);
     }
-    int finalize(){ /* we don't need to call MPI_Finalize */ } 
+    int finalize(){ return 0; /* we don't need to call MPI_Finalize */ } 
 };
+#else
+class Endpoint_MPI_t : public Endpoint_t {
+protected:
+    ContactInfo_MPI *ci;
+public:
+
+    Endpoint_MPI_t(){
+        throw ENDPOINT_UNAVAILABLE;
+    }
+
+    void setMyContactInfo( int rank ){
+        this->ci.setRank( rank );
+    }
+    
+    void init() {}
+    void init_end( ){}
+    ContactInfo* getMyContactInfo(){ return NULL; }
+    int finalize(){ return 0; /* we don't need to call MPI_Finalize */ } 
+};
+#endif
 
 class Communication_MPI_t : public Communication_t, public Endpoint_MPI_t {
 
@@ -97,7 +149,7 @@ class Communication_MPI_t : public Communication_t, public Endpoint_MPI_t {
 
     Communication_MPI_t(){}
     
-    void init( int rank ){
+    void init_comm( int rank ){
         //        shmem_mpi_init(  );
     }
     /*void init( ){
@@ -114,11 +166,12 @@ class Communication_MPI_t : public Communication_t, public Endpoint_MPI_t {
         //   this->ci = ci;
     }
 
-    int posh__get(  void* target, const void* source, size_t size, int pe ){
-        return shmem_mpi_get( pe, target, source, size );
+    void posh__get(  void* target, const void* source, size_t size, int pe ){
+        std::cout << "get" << std::endl;
+        shmem_mpi_get( pe, target, source, size );
     }
-    int posh__put(  void* target, const void* source, size_t size, int pe ){
-       return  shmem_mpi_put( pe, target, source, size );
+    void posh__put(  void* target, const void* source, size_t size, int pe ){
+        shmem_mpi_put( pe, target, source, size );
     }
 
 };

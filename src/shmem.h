@@ -321,7 +321,7 @@ void shmem_double_min_to_all( double*, double*, int, int, int, int, double*, lon
 void shmem_longlong_min_to_all( long long*, long long*, int, int, int, int, long long*, long* );
 void shmem_longdouble_min_to_all( long double*, long double*, int, int, int, int, long double*, long* );
 
-void shmem_short_sum_to_all( short*, short*, int, int, int, int, int*, long* );
+void shmem_short_sum_to_all( short*, short*, int, int, int, int, short*, long* );
 void shmem_int_sum_to_all( int*, int*, int, int, int, int, int*, long* );
 void shmem_long_sum_to_all( long*, long*, int, int, int, int, long*, long* );
 void shmem_float_sum_to_all( float*, float*, int, int, int, int, float*, long* );
@@ -331,7 +331,7 @@ void shmem_longdouble_sum_to_all( long double*, long double*, int, int, int, int
 //void shmem_complexf_sum_to_all( float complex*, float complex*, int, int, int, int, float complex*, long* );
 //void shmem_complexd_sum_to_all( double complex*, double complex*, int, int, int, int, double complex*, long* );
 
-void shmem_short_prod_to_all( short*, short*, int, int, int, int, int*, long* );
+void shmem_short_prod_to_all( short*, short*, int, int, int, int, short*, long* );
 void shmem_int_prod_to_all( int*, int*, int, int, int, int, int*, long* );
 void shmem_long_prod_to_all( long*, long*, int, int, int, int, long*, long* );
 void shmem_float_prod_to_all( float*, float*, int, int, int, int, float*, long* );
@@ -340,6 +340,196 @@ void shmem_longlong_prod_to_all( long long*, long long*, int, int, int, int, lon
 void shmem_longdouble_prod_to_all( long double*, long double*, int, int, int, int, long double*, long* ); 
 //void shmem_complexf_prod_to_all( float complex*, float complex*, int, int, int, int, float complex*, long* );
 //void shmem_complexd_prod_to_all( double complex*, double complex*, int, int, int, int, double complex*, long* );
+
+
+    // AND
+    
+int shmem_uchar_and_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce);
+int shmem_short_and_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_ushort_and_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_int_and_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_uint_and_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_long_and_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_ulong_and_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_longlong_and_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_ulonglong_and_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+
+#if( __STDC_VERSION__ >= 201112L )
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce);
+int shmem_and_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_and_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_and_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_and_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_and_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+#endif
+
+// OR
+
+int shmem_uchar_or_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce);
+int shmem_short_or_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_ushort_or_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_int_or_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_uint_or_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_long_or_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_ulong_or_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_longlong_or_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_ulonglong_or_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+
+#if( __STDC_VERSION__ >= 201112L )
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce);
+int shmem_or_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_or_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_or_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_or_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_or_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+#endif
+
+    // XOR
+
+int shmem_uchar_xor_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce);
+int shmem_short_xor_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_ushort_xor_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_int_xor_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_uint_xor_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_long_xor_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_ulong_xor_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_longlong_xor_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_ulonglong_xor_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+
+#if( __STDC_VERSION__ >= 201112L )
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned char *dest, const unsigned char *source, size_t nreduce);
+int shmem_xor_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_xor_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_xor_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_xor_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_xor_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+#endif
+
+// MAX
+
+int shmem_short_max_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_ushort_max_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_int_max_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_uint_max_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_long_max_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_ulong_max_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_longlong_max_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_ulonglong_max_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+int shmem_float_max_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce);
+int shmem_double_max_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce);
+int shmem_longdouble_max_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce);
+
+#if( __STDC_VERSION__ >= 201112L )
+int shmem_max_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce);
+int shmem_max_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce);
+#endif
+
+// MIN
+
+int shmem_short_min_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_ushort_min_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_int_min_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_uint_min_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_long_min_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_ulong_min_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_longlong_min_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_ulonglong_min_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+int shmem_float_min_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce);
+int shmem_double_min_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce);
+int shmem_longdouble_min_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce);
+
+#if( __STDC_VERSION__ >= 201112L )
+int shmem_min_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce);
+int shmem_min_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce);
+#endif
+
+// SUM
+
+int shmem_short_sum_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_ushort_sum_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_int_sum_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_uint_sum_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_long_sum_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_ulong_sum_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_longlong_sum_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_ulonglong_sum_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+int shmem_float_sum_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce);
+int shmem_double_sum_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce);
+int shmem_longdouble_sum_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce);
+    
+#if( __STDC_VERSION__ >= 201112L )
+int shmem_sum_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce);
+int shmem_sum_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce);
+#endif
+
+// TODO: complex
+
+// PROD
+
+int shmem_short_prod_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_ushort_prod_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_int_prod_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_uint_prod_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_long_prod_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_ulong_prod_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_longlong_prod_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_ulonglong_prod_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+int shmem_float_prod_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce);
+int shmem_double_prod_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce);
+int shmem_longdouble_prod_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce);
+    
+#if( __STDC_VERSION__ >= 201112L )
+int shmem_prod_reduce(/*shmem_team_t team,*/ short *dest, const short *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ unsigned short *dest, const unsigned short *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ int *dest, const int *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ unsigned int *dest, const unsigned int *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ long *dest, const long *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ unsigned long *dest, const unsigned long *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ long long *dest, const long long *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ unsigned long long *dest, const unsigned long long *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ float *dest, const float *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ double *dest, const double *source, size_t nreduce);
+int shmem_prod_reduce(/*shmem_team_t team,*/ long double *dest, const long double *source, size_t nreduce);
+#endif
+    // TODO: complex
+
+
 
 /******************************/
 /*** 8.17. Collect Routines ***/

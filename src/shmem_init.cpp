@@ -55,12 +55,17 @@ char VAR_PE_NUM[]    = "SHMEM_PE_NUM";    /* My own PE number */
 char VAR_RUN_DEBUG[] = "SHMEM_RUN_DEBUG"; /* Debug mode: start an infinite loop to attach a debugger */
 char VAR_PID_ROOT[]  = "SHMEM_PID_ROOT";  /* pid of the root process (rank 0) */
 char VAR_COMM_CHAN[] = "SHMEM_COMM_CHANNEL";  /* Force a communication channel */
+char VAR_COLL_TYPE[] = "SHMEM_COLL_TYPE";  /* Force a collective communication module */
+
 
 //managed_shared_memory symmetric_heap;
 
 SymmetricHeap myHeap;
 MeMyselfAndI myInfo;
 std::vector<Process> processes;
+
+char* comm_channel;
+char* coll_type;
 
 #ifdef CHANDYLAMPORT
 Checkpointing checkpointing;
@@ -75,8 +80,6 @@ Checkpointing checkpointing;
 void start_pes( int npes ) {
 
     int port, rc;
-    char* comm_channel;
-
     /* Loop here in debug mode to be able to attach a debugger */
 
     if( NULL != getenv( VAR_RUN_DEBUG ) ) {
@@ -93,6 +96,11 @@ void start_pes( int npes ) {
 
     if( NULL != (comm_channel = getenv( VAR_COMM_CHAN ) ) ) {
         std::cout << "Use communication channel " << comm_channel << std::endl;
+    }
+
+     /* Is the collective communication type specified? */
+    if( NULL != (coll_type = getenv( VAR_COLL_TYPE ) ) ) {
+        std::cout << "Use collective communication module " << coll_type << std::endl;
     }
 
     if( myInfo.getStarted() ) return;
@@ -115,9 +123,12 @@ void start_pes( int npes ) {
     
     /* Set up the symmetric heap of this process element */
 
-    myInfo.communicationInit( comm_channel );
+    rc = myInfo.communicationInit( comm_channel );
+    if( 0 > rc ) {
+        exit( rc );
+    }
     //    myHeap.setupSymmetricHeap();    
-    myInfo.collectiveInit();
+    myInfo.collectiveInit( coll_type );
     myInfo.allocNeighbors( myInfo.getSize() );
 
 #if CHANDYLAMPORT

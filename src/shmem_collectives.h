@@ -27,6 +27,15 @@ template<class T>void shmem_template_gather_flat( T*, const T*, size_t, int );
 void shmem_int_allgather_flat( int*, const int*, size_t );
 void shmem_int_gather_flat( int*, const int*, size_t, int );
 
+bool _shmem_is_remote_process_in_coll( int rank );
+void _shmem_wait_until_entered( int rank ); 
+bool _shmem_part_of_coll( int rank, int PE_start, int PE_size, int logPE_stride );
+int _shmem_binomial_binbase_size( int nb ) ;
+int _shmem_binomial_myfather( int PE_root, int PE_start, int logPE_stride, int PE_size ) ;
+int _shmem_binomial_children( int rank, int size );
+
+
+
 #include "shmem_collectives.tpp"
 
 #endif

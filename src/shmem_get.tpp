@@ -48,12 +48,13 @@ template<class T> void shmem_template_get( T* target, const T* source, size_t nb
 #ifdef _DEBUG
         //    std::cout << "--> "<< myInfo.getRank() << " mapped buff addr " << buf << " into " << target << std::endl;
 #endif
-
+        
         /* Pull the data here */
-        
-        myInfo.getNeighbor( pe )->communications->posh__get( target, source, nb*sizeof( T ), pe );
-        
+   
+        myInfo.getNeighbor( pe )->communications->posh__get( static_cast<void*>( target ), static_cast<const void*>( source ), nb*sizeof( T ), pe );
+    
     POSH_PROF_FUNCTION_CONCLUSION
+
 #if 0
         
     neighbor_comm_type_t neighbor_type = _getNeighborComm( pe );

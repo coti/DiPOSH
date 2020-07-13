@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 LIPN - Universite Paris 13
+ * Copyright (c) 2020 LIPN - Universite Sorbonne Paris Nord
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -17,25 +17,3 @@
  * You should have received a copy of the GNU General Public License
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#ifndef _POSH_COMMUNICATION_H_
-#define _POSH_COMMUNICATION_H_
-
-#include "posh_contactinfo.h"
-
-
-class Communication_t {
- public:
-    virtual ~Communication_t() = default;
-    virtual void init_comm( int ) = 0;
-    virtual void reopen( void ) = 0;
-    virtual void close( void ) = 0;
-    virtual void setContactInfo( ContactInfo& ) = 0;
-    virtual void posh__get(  void* , const void* , size_t , int  ) = 0;
-    virtual void posh__put(  void* , const void* , size_t , int  ) = 0;
-
-    /* TODO atomic!! */
-};
-
-
-#endif // _POSH_COMMUNICATION_H_

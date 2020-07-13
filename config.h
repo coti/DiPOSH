@@ -8,6 +8,9 @@
    header file. */
 #define HAVE_BOOST_INTERPROCESS_MANAGED_SHARED_MEMORY_HPP 1
 
+/* Define to 1 if you have the <boost/mpi.hpp> header file. */
+#define HAVE_BOOST_MPI_HPP 1
+
 /* Define to 1 if you have the <boost/system/error_code.hpp> header file. */
 #define HAVE_BOOST_SYSTEM_ERROR_CODE_HPP 1
 

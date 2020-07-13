@@ -59,6 +59,15 @@ Please see the file called INSTALL.
 A small piece of OpenSHMEM code was written and placed in the example/ directory.
 Please see the file called INSTALL for more information.
 
+## Major environment variables
+
+* ```SHMEM_COMM_CHANNEL```: set the communication channel (MPI, TCP, HUB...)
+* ```SHMEM_COLL_TYPE```: set the collective communication module (MPI, BINOMIAL)
+
+Flat: put and get
+
+bonimial: put only
+
 ## Licensing
 
 Please see the file called LICENSE.

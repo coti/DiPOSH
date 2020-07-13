@@ -98,7 +98,7 @@ int Endpoint_hub_t::finalize( ) {
     /* We don't need to call MPI_Finalize either. */
 }
 
-int Communication_hub_t::posh__put(  void* target, const void* source, size_t size, int pe ){
+void Communication_hub_t::posh__put(  void* target, const void* source, size_t size, int pe ){
 
     /* We shouldn't have to deal with local communications
        bcause local neighbors are initialized with SM communications */
@@ -122,10 +122,10 @@ int Communication_hub_t::posh__put(  void* target, const void* source, size_t si
 
     comm->recv( hubrank, TAG_PUT_DONE );
 
-    return 0;
+    //    return 0;
 }
 
-int Communication_hub_t::posh__get(  void* local, const void* target, size_t size, int pe ){
+void Communication_hub_t::posh__get(  void* local, const void* target, size_t size, int pe ){
 
     /* We shouldn't have to deal with local communications
        bcause local neighbors are initialized with SM communications */
@@ -145,6 +145,6 @@ int Communication_hub_t::posh__get(  void* local, const void* target, size_t siz
     comm->send( hubrank, TAG_GET, couple );
     comm->recv( hubrank, TAG_DATA, (char*)local, size );
     
-    return 0;
+    //   return 0;
 }
 

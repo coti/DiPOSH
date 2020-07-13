@@ -22,7 +22,10 @@
 #define _POSH_HEAP_H_
 
 #include "posh_sm.h"
-//#include "shmem_internal.h"
+#include "shmem_constants.h"
+#include "shmem_internal.h"
+
+namespace bip = boost::interprocess;
 
 #define HEAPBASENAME "POSH_SymmetricHeap_"
 
@@ -32,10 +35,10 @@ class SymmetricHeap{
     char* heapName;
     unsigned long long int heapSize;
     uintptr_t baseAddr;
-    managed_shared_memory::handle_t offset_handle;
+    bip::managed_shared_memory::handle_t offset_handle;
 
  public:
-    managed_shared_memory myHeap;
+    bip::managed_shared_memory myHeap;
 
     // TODO : a voir si avec un managed_heap_memory ou un shared_memory_object ca pourrait le faire
 
@@ -80,24 +83,25 @@ class SymmetricHeap{
     char* getHeapName();
 
     uintptr_t getBaseAddr();
-    managed_shared_memory::handle_t getOffsetHandle(){ return this->offset_handle; }
+    bip::managed_shared_memory::handle_t getOffsetHandle(){ return this->offset_handle; }
 
     /* Operators */
 };
 
 extern SymmetricHeap myHeap;
+extern MeMyselfAndI myInfo;
 
 bool _sharedMemEsists( char* );
 
 inline void* _getMyBaseAddress( ) {
-    managed_shared_memory::handle_t handle0 = 0;
+    bip::managed_shared_memory::handle_t handle0 = 0;
     return myHeap.myHeap.get_address_from_handle( handle0 );
 }
 
 inline void* _getRemoteBaseAddress( int pe ) {
     
-    managed_shared_memory::handle_t handle0 = 0;
-    managed_shared_memory* remote;
+    bip::managed_shared_memory::handle_t handle0 = 0;
+    bip::managed_shared_memory* remote;
     /* quite unsafe -- should return -1 if the remote process is a TCP neighbor */
     Communication_SM_t* sm = (Communication_SM_t*) myInfo.getNeighbor( pe )->communications;
     remote = &( sm->remoteHeap );
@@ -107,13 +111,13 @@ inline void* _getRemoteBaseAddress( int pe ) {
 }
 
 inline void* _getLocalAddr( const size_t offset ) {
-    managed_shared_memory::handle_t handle0 = 0;
+    bip::managed_shared_memory::handle_t handle0 = 0;
     return (void*)( (char*)myHeap.myHeap.get_address_from_handle( handle0 ) + offset);
 }
 
 inline size_t _getOffset( const void* addr ) {
     size_t offset;
-    managed_shared_memory::handle_t myHandle = myHeap.myHeap.get_handle_from_address( (char*)addr );
+    bip::managed_shared_memory::handle_t myHandle = myHeap.myHeap.get_handle_from_address( (char*)addr );
     offset = ( (char*) myHeap.myHeap.get_address_from_handle( myHandle ) - (char*)_getMyBaseAddress() );
     // offset = (char*) addr - (char*)_getMyBaseAddress(); // est-ce que ça casse des choses ça ? 
    //   printf( "address %p handle %p base address %p offset %d\n", addr, _getMyBaseAddress(),  myHeap.myHeap.get_address_from_handle( myHandle ), offset );
@@ -129,7 +133,7 @@ inline void* _getRemoteAddr( const void* addr, int pe ) {
     return _getSharedMemRemoteAddr( addr, pe );
 }
 
-inline managed_shared_memory* _getMyHeap(){
+inline bip::managed_shared_memory* _getMyHeap(){
     return &(myHeap.myHeap);
 }
 

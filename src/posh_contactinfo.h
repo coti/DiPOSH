@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <ostream>
 
+
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX 256
 #endif
@@ -37,7 +38,7 @@ namespace boost {
 
 typedef uint64_t knem_cookie_t;
 
-enum  neighbor_comm_type_t {TYPE_SM, TYPE_TCP, TYPE_MPI, TYPE_KNEM, TYPE_NMAD, TYPE_HUB, NONE};
+enum  neighbor_comm_type_t: int {TYPE_SM, TYPE_TCP, TYPE_MPI, TYPE_KNEM, TYPE_NMAD, TYPE_HUB, NONE};
 
 /* Will be more complex when we support several types of networks */
 /* TODO: we need an interface here */
@@ -54,10 +55,13 @@ protected:
     int rank;
     bool ready;
     neighbor_comm_type_t type;
-
+    std::string hostname;
+    
     virtual std::ostream& doprint( std::ostream& ) const = 0;
+    virtual std::istream& doinput( std::istream& ) = 0;
 
 public:
+    virtual ~ContactInfo() = default;
 
     /*    virtual void setHostname( int, char* ) = 0;
     virtual void setHostname( char* ) = 0;
@@ -74,9 +78,14 @@ public:
     /*std::atomic<bool>*/ bool isReady(){
         return this->ready;
     }
-        
+    std::string getHostname() {return this->hostname;}
+    void setHostname( char* name) { this->hostname = std::string( name );}
+
     friend std::ostream& operator << ( std::ostream& os, const ContactInfo& b ) {
-        return b.doprint(os); // polymorphic print via reference
+        return b.doprint( os ); // polymorphic print via reference
+    }
+    friend std::istream &operator>> ( std::istream& is, ContactInfo &c ) { 
+        return c.doinput( is );
     }
 
 };

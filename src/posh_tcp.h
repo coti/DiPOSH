@@ -18,6 +18,10 @@
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "posh_contactinfo.h"
+#include "posh_endpoint.h"
+#include "posh_communication.h"
+
 #include "shmem_internal.h"
 #include "shmem_tcp.h"
 
@@ -67,6 +71,21 @@ public:
         inet_ntop( AF_INET, (const void*)&ip_int, ipAddress, sizeof(ipAddress));      
         return os << "TCP -- rank " << rank << std::endl <<  ipAddress << " " << port;
     }
+    std::istream& doinput( std::istream& is )  {
+        char _ipAddress[INET6_ADDRSTRLEN];
+        int _rank;
+        uint32_t _ip4_addr;
+        uint16_t _port;
+        std::string type, sep, rank_str, ip_str;
+        is >> type >> sep >> rank_str >> _rank ;
+        is >> ip_str  >> _port;
+        this->rank = _rank;
+        this->port = _port;
+        //  _ipAddress = ip_str.c_str();
+        inet_pton( AF_INET, /*_ipAddress*/ ip_str.c_str(), (void*)&_ip4_addr );
+        this->ip4_addr = _ip4_addr;
+        return is;
+    }
 
     /*    neighbor_comm_type_t getType(){
         return type;
@@ -79,11 +98,8 @@ public:
     }
     int getRank(){
         return rank;
-    }
-    bool isReady() { return this->ready; }
-
-*/
-
+        } */
+    
     void setHostname( int rank, char* hname ) {
         std::strcpy( this->hostname, hname );
     }
@@ -128,13 +144,16 @@ public:
     boost::thread ked_thread;
     
  public:
-    void init(){
+    /*void init(){
+        shmem_tcp_init();
+        }*/
+    void init_end(){
         shmem_tcp_init();
     }
-    void init(int rank ){ // TODO really ?
+    /*    void init(int rank ){ // TODO really ?
         shmem_tcp_init();
-    }
-    int finalize(){} // TODO
+        }*/
+    int finalize(){ return 0; } // TODO
     void reopen(){ /*init(this->rank);*/ } // tOO
     void close( void ){} // TODO
 
@@ -156,6 +175,12 @@ public:
     ContactInfo* getMyContactInfo(){
         return &(this->ci);
     }
+    void setMyContactInfo( int rank ){
+        this->ci.setRank( rank );
+    }
+    bool isReady() { return this->ci.getReady(); }
+    neighbor_comm_type_t getType() { return TYPE_TCP; }
+
 };
 
 
@@ -166,7 +191,7 @@ class Communication_TCP_t : public Communication_t, public TCPendpoint_t {
 
     /* Interface */
     
-    void init( int rank ){
+    void init_comm( int rank ){
         //
     }
 
@@ -179,12 +204,21 @@ class Communication_TCP_t : public Communication_t, public TCPendpoint_t {
         this->address.sin_port = ci_tcp.getPort(); 
         this->socket = -1;
     }
-    int posh__get(  void* target, const void* source, size_t size, int pe ){
-        return shmem_tcp_get( pe, target, source, size );
+    void posh__get(  void* target, const void* source, size_t size, int pe ){
+        shmem_tcp_get( pe, target, source, size );
     }
-    int posh__put(  void* target, const void* source, size_t size, int pe ){
-        return shmem_tcp_put( pe, target, source, size );
+    void posh__put(  void* target, const void* source, size_t size, int pe ){
+        shmem_tcp_put( pe, target, source, size );
     }
+
+    /* For fault tolerance */
+    void close(  ){
+        // nothing
+    }
+    void reopen(  ){
+	// nothing
+    }
+
 
 };
 

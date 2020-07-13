@@ -18,8 +18,10 @@
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "shmem_atomic.h"
-#include "shmem_bcast.h"
+//#include "shmem_atomic.h"
+//#include "shmem_bcast.h"
+int shmem_int_finc( int*, int );
+#include "shmem_put.h"
 
 template<class T>void shmem_template_allgather_flat( T* buffer, const T* myelem, size_t nb ){
     int ROOT = 0;
@@ -39,7 +41,7 @@ template<class T>void shmem_template_allgather_flat( T* buffer, const T* myelem,
         }
     }
 
-    shmem_broadcast_template( buffer, buffer, size, ROOT, ROOT, 0, size, (char*)NULL );
+    myInfo.collectives->posh_broadcast( buffer, buffer, size, ROOT, ROOT, 0, size, (T*)NULL );
 
 }
 

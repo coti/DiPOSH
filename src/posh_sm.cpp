@@ -37,7 +37,7 @@ int shmem_sm_get( int pe, void* target, const void* source, size_t size ) {
 }
 
 
-void Communication_SM_t::init( int rank ) {
+void Communication_SM_t::init_comm( int rank ) {
     this->rank = rank;
     char* _name; 
     _name = myHeap.buildHeapName( rank );
