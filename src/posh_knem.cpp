@@ -28,7 +28,7 @@
 
 #include "posh_knem.h"
 
-void KNEMendpoint_t::shmem_knem_init( ){
+void Endpoint_KNEM_t::init_end( ){
     int knem_fd, err;
     knem_cookie_t mycookie;
      
@@ -55,12 +55,12 @@ void KNEMendpoint_t::shmem_knem_init( ){
      }
      mycookie = create.cookie;
 
-     myInfo.setMyContactInfo( mycookie );
-     myInfo.getMyEndpointKNEM()->setSocket( knem_fd );
+     this->ci.setCookie( mycookie );
+     this->setSocket( knem_fd );
 }
 
 
-int shmem_knem_get( int pe, void* target, const void* source, size_t size ){
+void Communication_KNEM_t::posh__get( void* target, const void* source, size_t size, int pe ){
   struct knem_cmd_inline_copy icopy;
   struct knem_cmd_param_iovec* knem_iov;
   struct knem_cmd_param_iovec  knem_iov_s[1];
@@ -84,12 +84,12 @@ int shmem_knem_get( int pe, void* target, const void* source, size_t size ){
       knem_iov_d = (struct knem_cmd_param_iovec*) malloc( nb_iov * sizeof( struct knem_cmd_param_iovec ) );
       i = 0; j = 0;
       while( i < ( size - KNEM_LIMIT ) ){
-          knem_iov_d[j].base = reinterpret_cast<uint64_t>( target + i );
+          knem_iov_d[j].base = reinterpret_cast<uint64_t>( target ) + i;
           knem_iov_d[j].len = KNEM_LIMIT;
           i += KNEM_LIMIT;
           j++;
       }
-      knem_iov_d[j].base = reinterpret_cast<uint64_t>( target + i );
+      knem_iov_d[j].base = reinterpret_cast<uint64_t>( target ) + i;
       knem_iov_d[j].len = size % KNEM_LIMIT;
       knem_iov = knem_iov_d;
   }
@@ -101,28 +101,25 @@ int shmem_knem_get( int pe, void* target, const void* source, size_t size ){
   icopy.write = 0; /* read from the remote region into our local segments */
   icopy.flags = 0;
 
-  knem_fd = myInfo.getMyEndpointKNEM()->getSocket();
+  knem_fd = this->getSocket();
   
   err = ioctl( knem_fd, KNEM_CMD_INLINE_COPY, &icopy );
   if( 0 != err ) {
       perror( "KNEM get" );
-      return -1;
   }
 
   if (icopy.current_status != KNEM_STATUS_SUCCESS){
     printf("request failed\n");
     perror( "KNEM get" );
-      return -1;
   }
   
   if( _shmem_unlikely( size >= KNEM_LIMIT ) ) {
       free( knem_iov_d );
   }
-  return 0; // FIXME really ?
 }
 
 
-int shmem_knem_put(  int pe, void* target, const void* source, size_t size ){
+void Communication_KNEM_t::posh__put(  void* target, const void* source, size_t size, int pe ){
   struct knem_cmd_inline_copy icopy;
   struct knem_cmd_param_iovec* knem_iov;
   struct knem_cmd_param_iovec  knem_iov_s[1];
@@ -146,12 +143,12 @@ int shmem_knem_put(  int pe, void* target, const void* source, size_t size ){
       knem_iov_d = (struct knem_cmd_param_iovec*) malloc( nb_iov * sizeof( struct knem_cmd_param_iovec ) );
       i = 0; j = 0;
       while( i < ( size - KNEM_LIMIT ) ){
-          knem_iov_d[j].base = reinterpret_cast<uint64_t>( target + i );
+          knem_iov_d[j].base = reinterpret_cast<uint64_t>( target ) + i;
           knem_iov_d[j].len = KNEM_LIMIT;
           i += KNEM_LIMIT;
           j++;
       }
-      knem_iov_d[j].base = reinterpret_cast<uint64_t>( target + i );
+      knem_iov_d[j].base = reinterpret_cast<uint64_t>( target ) + i;
       knem_iov_d[j].len = size % KNEM_LIMIT;
       knem_iov = knem_iov_d;
   }
@@ -163,22 +160,19 @@ int shmem_knem_put(  int pe, void* target, const void* source, size_t size ){
   icopy.write = 1; /* write mode */
   icopy.flags = 0;
 
-  knem_fd = myInfo.getMyEndpointKNEM()->getSocket();
+  knem_fd = this->getSocket();
   
   err = ioctl( knem_fd, KNEM_CMD_INLINE_COPY, &icopy );
   if( 0 != err ) {
       perror( "KNEM put" );
-      return -1;
   }
   
   if( icopy.current_status != KNEM_STATUS_SUCCESS ){
     printf( "request failed\n" );
     perror( "KNEM put" );
-    return -1;
   }
   
   if( _shmem_unlikely( size >= KNEM_LIMIT ) ) {
       free( knem_iov_d );
   }
-  return 0; //FIXME really?
 }

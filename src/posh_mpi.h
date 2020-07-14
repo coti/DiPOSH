@@ -167,7 +167,6 @@ class Communication_MPI_t : public Communication_t, public Endpoint_MPI_t {
     }
 
     void posh__get(  void* target, const void* source, size_t size, int pe ){
-        std::cout << "get" << std::endl;
         shmem_mpi_get( pe, target, source, size );
     }
     void posh__put(  void* target, const void* source, size_t size, int pe ){

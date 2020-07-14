@@ -278,7 +278,7 @@ int MeMyselfAndI::communicationInit( char* comm_channel ){
 #ifdef _WITH_KNEM
         try{ /* KNEM */
             myEndpoints.push_back( new  Endpoint_KNEM_t);
-            myEndpoints.back().init();       
+            myEndpoints.back().init_end();       
         } catch( int ex ){
             ;; /* silent */
         }
@@ -591,9 +591,9 @@ void gatherContactInfo(){
                     } else if ( ptr_type[j] == TYPE_KNEM ) {
                         ContactInfo_KNEM ci;
                         s >> ci;
-                        n.neigh_ci.push_back( &ci );
+                        myInfo.neigh_ci.push_back( &ci );
 
-                        n.comm_type = TYPE_KNEMM;
+                        n.comm_type = TYPE_KNEM;
                         n.communications = new Communication_KNEM_t();
                         n.communications->setContactInfo( ci );
                         n.communications->init_comm( i );

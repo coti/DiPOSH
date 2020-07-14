@@ -22,11 +22,10 @@
 #define _POSH_KNEM_H_
 
 #include "posh_contactinfo.h"
+#include "posh_endpoint.h"
 
 #define KNEM_LIMIT 1024 /* max size of an iovec */
 
-int shmem_knem_put( int, void*, const void*, size_t );
-int shmem_knem_get( int, void*, const void*, size_t );
 
 class ContactInfo_KNEM : public ContactInfo {
 
@@ -36,6 +35,7 @@ class ContactInfo_KNEM : public ContactInfo {
     knem_cookie_t cookie;
     /*std::atomic<bool>*/ bool ready; //{ false };
 
+public:
     template<class Archive>
         void serialize( Archive & ar, const unsigned int version) {
         ar & type;
@@ -52,7 +52,17 @@ class ContactInfo_KNEM : public ContactInfo {
         this->type = type;
     }
     std::ostream& doprint( std::ostream& os ) const {
-        return os << "KNEM -- rank " << rank << " cookie " << cookie;
+        return os << "KNEM -- rank " << rank << " cookie " << cookie << hostname;
+    }
+
+    std::istream& doinput( std::istream& is ) {
+        std::string type, sep, sep2, sep3, host, _rank;
+        knem_cookie_t _cookie;
+        is >> type >> sep >> sep2 >> _rank >> sep3 >> _cookie >> host;
+        this->rank = std::stoi( _rank );
+        this->cookie = _cookie;
+        this->hostname = host;
+        return is;
     }
 
     int getRank(){
@@ -68,19 +78,32 @@ class ContactInfo_KNEM : public ContactInfo {
     void setCookie( knem_cookie_t c ){
         this->cookie = c;
     }
+    neighbor_comm_type_t getType(){
+        return type;
+    }
+    void setType( neighbor_comm_type_t type ){
+        this->type = type;
+    }
     bool isReady() { return this->ready; }
 
 };                                   
 
 
-class KNEMendpoint_t : public Endpoint_t{
- protected:
-    knem_cookie_t cookie;
+class Endpoint_KNEM_t : public Endpoint_t{
+protected:
+    ContactInfo_KNEM ci;
     int knem_fd;
     
  public:
+    Endpoint_KNEM_t(){}
+    neighbor_comm_type_t getType() { return TYPE_KNEM; }
+    
+    void setMyContactInfo( int rank ){
+        this->ci.setRank( rank );
+    }
+    void init_end( );
     knem_cookie_t getCookie(){
-        return this->cookie;
+        return this->ci.getCookie();
     }
     int getSocket(){
         return this->knem_fd;
@@ -88,29 +111,34 @@ class KNEMendpoint_t : public Endpoint_t{
     void setSocket( int sd ){
         this->knem_fd = sd;
     }
-    void shmem_knem_init( void );
-    int finalize(){} // TODO
+    ContactInfo* getMyContactInfo(){
+        return &(this->ci);
+    }
+    int finalize(){ return 0; /* we don't need to call MPI_Finalize */ } 
 };
 
-class Communication_KNEM_t : public Communication_t, public KNEMendpoint_t {
+class Communication_KNEM_t : public Communication_t, public Endpoint_KNEM_t {
 
  public:
     
-    void init( int rank ){
+    //   void init( int rank ){
         /* TODO */
+    //    }
+    void init_comm( int rank ){
+        //        shmem_mpi_init(  );
     }
-    void reopen(){ init(this->rank); } // TODO
+    void reopen(){ /*init(this->rank);*/ } // TODO
     void close( void ){} // TODO
-    void setContactInfo( ContactInfo_KNEM& ci ) {
-        this->cookie = ci.getCookie();
+    void setContactInfo( ContactInfo& ci ) {
+        ContactInfo_KNEM* ck = static_cast<ContactInfo_KNEM*>( &ci );
+        this->ci.setCookie( ck->getCookie() );
     }
+    /*    void setContactInfo( int rank ) {
+         this->ci.setRank( rank );
+         }*/
 
-    int posh__get(  void* target, const void* source, size_t size, int pe ){
-        return shmem_knem_get( pe, target, source, size );
-    }
-    int posh__put(  void* target, const void* source, size_t size, int pe ){
-        return shmem_knem_put( pe, target, source, size );
-    }
+    void posh__get(  void* target, const void* source, size_t size, int pe );
+    void posh__put(  void* target, const void* source, size_t size, int pe );
 
 };
 

@@ -241,8 +241,8 @@ public:
     boost::thread* getMyTCPthreadID( void );
 #endif // _WITH_TCP
 #ifdef _WITH_KNEM /* FIXME: use an object */
-    void initNeighborKNEM( int, ContactInfo_KNEM& );
-    KNEMendpoint_t* getMyEndpointKNEM();
+    //    void initNeighborKNEM( int, ContactInfo_KNEM& );
+    //    KNEMendpoint_t* getMyEndpointKNEM();
 #endif
     //    void initNeighborNULL( int );
 #ifdef MPICHANNEL
