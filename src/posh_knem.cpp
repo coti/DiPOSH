@@ -57,6 +57,41 @@ void Endpoint_KNEM_t::init_end( ){
 
      this->ci.setCookie( mycookie );
      this->setSocket( knem_fd );
+     int rank = myInfo.getRank();
+     this->ci.setRank( rank );
+
+}
+
+void Endpoint_KNEM_t::init_end( int rank ){
+    int knem_fd, err;
+    knem_cookie_t mycookie;
+     
+     struct knem_cmd_create_region create;
+     struct knem_cmd_param_iovec knem_iov[1];
+     
+     knem_fd = open( KNEM_DEVICE_FILENAME, O_RDWR );
+     if( knem_fd < 0 ) {
+         perror( "Opening KNEM fd" );
+         return;
+     }
+     
+     knem_iov[0].base = (uint64_t)myHeap.getBaseAddr();
+     knem_iov[0].len = myHeap.getSize();
+     
+     create.iovec_array = (uintptr_t) &knem_iov[0];
+     create.iovec_nr = 1;
+     create.flags = KNEM_FLAG_ANY_USER_ACCESS;
+     create.protection = PROT_READ | PROT_WRITE; /*  allow both remote readers and writers */
+     err = ioctl( knem_fd, KNEM_CMD_CREATE_REGION, &create );
+
+     if( 0 != err ) {
+         perror( "ioctl (create region)" );
+     }
+     mycookie = create.cookie;
+
+     this->ci.setCookie( mycookie );
+     this->setSocket( knem_fd );
+     this->ci.setRank( rank );
 }
 
 

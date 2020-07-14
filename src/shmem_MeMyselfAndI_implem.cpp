@@ -514,7 +514,7 @@ void gatherContactInfo(){
                             }
                         }
 
-                        //                        std::cout << myInfo.getRank() << " take " << ptr_type[j] << std::endl;
+                        //  std::cout << myInfo.getRank() << " take " << ptr_type[j] << std::endl;
                         
                         maxpriority = channel_priorities[ ptr_type[j] ];
                         comm_type = ptr_type[j];
@@ -540,7 +540,7 @@ void gatherContactInfo(){
 
                 memcpy( toto, ptr_ci, alllen[ displ[i] + j] );
                 toto[alllen[ displ[i] + j]] = '\0';
-                //                std::cout << "CI: " <<  toto << std::endl;
+                // std::cout << "CI: " <<  toto << std::endl;
                 s << toto;
                 
                 ptr_ci += alllen[ displ[i] + j];
