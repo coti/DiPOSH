@@ -23,7 +23,7 @@
 #include "posh_launcher_mpi.h"
 
 #define OMPI_ENV_VARIABLE "OMPI_UNIVERSE_SIZE"
-#define MPICH_ENV_VARIABLE "MPIEXEC_UNIVERSE_SIZE"
+#define MPICH_ENV_VARIABLE "PMI_SIZE"
 
 bool isMPI( void ){
 
