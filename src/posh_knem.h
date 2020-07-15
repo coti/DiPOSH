@@ -32,7 +32,7 @@ class ContactInfo_KNEM : public ContactInfo {
     neighbor_comm_type_t type = TYPE_KNEM;
     
     int rank;
-    knem_cookie_t cookie;
+    knem_cookie_t cookie = 0;
     /*std::atomic<bool>*/ bool ready; //{ false };
 
 public:

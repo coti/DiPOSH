@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2020 LIPN - Universite Sorbonne Paris Nord
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -31,15 +31,18 @@
 void Endpoint_KNEM_t::init_end( ){
      int rank = myInfo.getRank();
      this->init_end( rank );
+     //     std::cout << rank << " my cookie is " << this->ci.getCookie() << std::endl;
 }
 
 void Endpoint_KNEM_t::init_end( int rank ){
     int knem_fd, err;
     knem_cookie_t mycookie;
-     
+         
      struct knem_cmd_create_region create;
      struct knem_cmd_param_iovec knem_iov[1];
      
+     mycookie = this->ci.getCookie( );
+    
      knem_fd = open( KNEM_DEVICE_FILENAME, O_RDWR );
      if( knem_fd < 0 ) {
          perror( "Opening KNEM fd" );
@@ -53,16 +56,22 @@ void Endpoint_KNEM_t::init_end( int rank ){
      create.iovec_nr = 1;
      create.flags = KNEM_FLAG_ANY_USER_ACCESS;
      create.protection = PROT_READ | PROT_WRITE; /*  allow both remote readers and writers */
+     if( 0 != mycookie ) {
+         create.cookie = mycookie;
+     }
+
      err = ioctl( knem_fd, KNEM_CMD_CREATE_REGION, &create );
 
      if( 0 != err ) {
          perror( "ioctl (create region)" );
      }
-     mycookie = create.cookie;
 
-     this->ci.setCookie( mycookie );
      this->setSocket( knem_fd );
      this->ci.setRank( rank );
+     if( 0 == mycookie ){
+         mycookie = create.cookie;
+         this->ci.setCookie( mycookie );
+     }
 }
 
 
@@ -74,8 +83,8 @@ void Communication_KNEM_t::posh__get( void* target, const void* source, size_t s
   int err, knem_fd, nb_iov, i, j;
   
   managed_shared_memory::handle_t handle = myHeap.myHeap.get_handle_from_address( source );
-  Neighbor_t* nb = myInfo.getNeighbor( pe );
-  knem_cookie_t cookie = ((Communication_KNEM_t*)(nb->communications))->getCookie();
+  knem_cookie_t cookie = this->getCookie();
+  //  std::cout << "Cookie for " << pe << " is " << cookie << std::endl;
         
   /* beyond a certain size, cut the message into several iovecs */
 
@@ -130,11 +139,12 @@ void Communication_KNEM_t::posh__put(  void* target, const void* source, size_t 
   struct knem_cmd_param_iovec* knem_iov;
   struct knem_cmd_param_iovec  knem_iov_s[1];
   struct knem_cmd_param_iovec* knem_iov_d;
-  int err, knem_fd, nb_iov, i, j;
+  int err, knem_fd;
+  unsigned int nb_iov, i, j;
 
   managed_shared_memory::handle_t handle = myHeap.myHeap.get_handle_from_address( target );
-  Neighbor_t* nb = myInfo.getNeighbor( pe );
-  knem_cookie_t cookie = ((Communication_KNEM_t*)(nb->communications))->getCookie();
+  knem_cookie_t cookie = this->getCookie();
+  //  std::cout << "Cookie for " << pe << " is " << cookie << std::endl;
         
   /* beyond a certain size, cut the message into several iovecs */
   
