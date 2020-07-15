@@ -113,13 +113,13 @@ libshmem_la_LDFLAGS = -version-info 0:2:0
 # Binaries: local launcher and pre-compiler
 #################################################################################
 
-bin_PROGRAMS = spawn shmem_s2sc 
+bin_PROGRAMS = shmem_s2sc 
 
-spawn_SOURCES = spawn.cpp shmem_portability.cpp shmem_constants.h shmem_portability.h
+#spawn_SOURCES = spawn.cpp shmem_portability.cpp shmem_constants.h shmem_portability.h
 
-if ENABLE_FT
-spawn_SOURCES += posh_ft_coordinator.cpp
-endif
+#if ENABLE_FT
+#spawn_SOURCES += posh_ft_coordinator.cpp
+#endif
 
 shmem_s2sc_SOURCES = shmem_s2sc.ll
 
