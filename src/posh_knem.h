@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 LIPN - Universite Paris 13
+ * Copyright (c) 2014-2020 LIPN - Universite Sorbonne Paris Nord
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -32,7 +32,7 @@ class ContactInfo_KNEM : public ContactInfo {
     neighbor_comm_type_t type = TYPE_KNEM;
     
     int rank;
-    knem_cookie_t cookie;
+    knem_cookie_t cookie = 0;
     /*std::atomic<bool>*/ bool ready; //{ false };
 
 public:
@@ -52,7 +52,7 @@ public:
         this->type = type;
     }
     std::ostream& doprint( std::ostream& os ) const {
-        return os << "KNEM -- rank " << rank << " cookie " << cookie << hostname;
+        return os << "KNEM -- rank " << rank << " cookie " << cookie << " " << hostname;
     }
 
     std::istream& doinput( std::istream& is ) {
@@ -102,6 +102,7 @@ protected:
         this->ci.setRank( rank );
     }
     void init_end( );
+    void init_end( int );
     knem_cookie_t getCookie(){
         return this->ci.getCookie();
     }
@@ -125,6 +126,7 @@ class Communication_KNEM_t : public Communication_t, public Endpoint_KNEM_t {
         /* TODO */
     //    }
     void init_comm( int rank ){
+        init_end( rank );
         //        shmem_mpi_init(  );
     }
     void reopen(){ /*init(this->rank);*/ } // TODO

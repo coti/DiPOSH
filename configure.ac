@@ -70,11 +70,21 @@ AC_ARG_WITH(
 
 if test -n "$BOOSTPATH"; then
        AC_MSG_CHECKING([user-supplied Boost installation])
-       CPPFLAGS="-I${BOOSTPATH}/include ${CPPFLAGS}"
+       CPPFLAGS="-I${BOOSTPATH}/include ${CPPFLAGS} -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_ERROR_CODE_HEADER_ONLY"
+#       CPPFLAGS="-I${BOOSTPATH}/include ${CPPFLAGS} -DBOOST_SYSTEM_NO_DEPRECATED "
+#       CPPFLAGS="-I${BOOSTPATH}/include ${CPPFLAGS} -DBOOST_ERROR_CODE_HEADER_ONLY"
+#       CPPFLAGS="-I${BOOSTPATH}/include ${CPPFLAGS} "
        LDFLAGS="-L${BOOSTPATH}/lib ${LDFLAGS}"
 fi
 
+<<<<<<< HEAD
 # TODO not always necessary
+=======
+ACX_MPI([], [AC_MSG_ERROR([Cannot find an MPI C++ compiler wrapper.])])
+CXX="$MPICXX"
+CXXCPP="$CXX -E"
+
+>>>>>>> a67d7898fa1b0bc992793f37bee2efdb97f18ee1
 #AC_LANG_PUSH([C++])
 AC_CHECK_HEADERS([boost/interprocess/managed_shared_memory.hpp], [],
     [AC_MSG_ERROR(You need the Boost Interprocess libraries.)])
@@ -244,6 +254,19 @@ AC_ARG_ENABLE([knem-comm],
 	[ AM_CONDITIONAL(ENABLE_COMM_KNEM, true)
        	  CPPFLAGS+=" -D_WITH_KNEM "],
 	[ AM_CONDITIONAL(ENABLE_COMM_KNEM, false) ] )
+AC_ARG_WITH(
+    [knem],
+    AS_HELP_STRING(
+	[--with-knem=FULLPATH],
+        [set full path to your KNEM installation]
+    ),
+    [KNEMPATH="$withval"]
+)
+if test -n "$KNEMPATH"; then
+       AC_MSG_CHECKING([user-supplied KNEM installation])
+       CPPFLAGS="-I${KNEMPATH}/include ${CPPFLAGS}"
+       LDFLAGS="-L${KNEMPATH}/lib ${LDFLAGS}"
+fi
 
 AC_ARG_ENABLE([tcp-comm],
 	AS_HELP_STRING([--enable-tcp-comm], [Enable TCP communications (slow) [default=no]]),
