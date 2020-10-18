@@ -18,6 +18,10 @@ public:
     virtual ContactInfo* getMyContactInfo( void ) = 0;
     virtual void setMyContactInfo( int ) = 0;
     virtual neighbor_comm_type_t getType( void ) = 0; 
+    virtual void* posh__shmalloc( size_t ) = 0;
+    virtual void* posh__shmemalign( size_t, size_t ) = 0;
+    virtual void* posh__shrealloc( void*, size_t ) = 0;
+    virtual void posh__shfree( void* ) = 0;
 
     friend  std::ostream& operator << ( std::ostream& os, const Endpoint_t& b ) {
         return os << "endpoint" << std::endl;

@@ -23,9 +23,15 @@
 #include "shmem_collectives.h"
 #include "posh_collectives.h"
 #include "posh_coll_flat.h"
+#ifdef _WITH_MPI
 #include "posh_coll_mpi.h"
+#endif // _WITH_MPI
+#ifdef _WITH_GASPI
+#include "posh_coll_gaspi.h"
+#endif // _WITH_GASPI
 
 #include "posh_collectives.tpp"
+#include "posh_communication.h"
 
 void MeMyselfAndI::setCollectiveType( unsigned char _type ) {
     this->collective->type = _type;
@@ -48,54 +54,62 @@ void* MeMyselfAndI::getCollectiveBuffer( ) {
 }
 
 void MeMyselfAndI::collectiveInit( char* coll_type ) {
-    this->collective = (Collective_t*) _shmallocFake( sizeof( Collective_t ) );
-    this->collective->ptr  = NULL;
-    this->collective->cnt  = 0;
-    this->collective->type = _SHMEM_COLL_NONE;
-    this->collective->inProgress = false;
+    /*        this->collective = (Collective_t*) _shmallocFake( sizeof( Collective_t ) );
+        this->collective->ptr  = NULL;
+        this->collective->cnt  = 0;
+        this->collective->type = _SHMEM_COLL_NONE;
+        this->collective->inProgress = false;
 #if _DEBUG 
-    this->collective->space = -1;
+        this->collective->space = -1;
 #endif
+*/
+    collective_typenames[ "MPI" ]   = COLL_MPI;
+    collective_typenames[ "GASPI" ] = COLL_GASPI;
 
     /* Initialize the collectives I am going to use */
 
-    if( NULL != coll_type ) { /* The user specified which collective communication module they want */
-        if ( 0 == strcmp( coll_type, "MPI" ) ) {
-#if 1 //def MPICHANNEL
-            this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_MPI_t };
+    switch( getCollType( coll_type ) ){
+        //switch(  collective_typenames[ coll_type ] ){
+#ifdef MPICHANNEL
+    case COLL_MPI:
+        this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_MPI_t };
+        break;
 #endif
-        }
-        else{
-            std::cout << "Could not understand the collective type specified. Fallback: flat"<< std::endl;
+#ifdef _WITH_GASPI
+    case COLL_GASPI:
+        this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_GASPI_t };
+        break;
+#endif
+    case COLL_NULL:
+        /* No coll type was given. Which communication channel are we using? */
+            std::cout << comm_channel << " ("<< getCommType( comm_channel ) << " - " << TYPE_GASPI << ")" << std::endl;
+        switch( getCommType( comm_channel ) ){
+#ifdef MPICHANNEL
+        case TYPE_MPI:
+            this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_MPI_t };
+            break;
+#endif
+#ifdef _WITH_GASPI
+        case TYPE_GASPI:
+            this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_GASPI_t };
+            break;
+#endif
+        default:/* Last resort: the flat one */
             this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_flat_t };
+            break;
         }
-    } else {
-        /* The user did not specify which collective communication module they want.
-           Which communication channel are we using? */    
-        if( NULL == comm_channel ) {
-#if 1 //def MPICHANNEL
-            this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_MPI_t };
-        }
-#elif  _WITH_TCP
-            /***/
-#endif
-        else {
-            if ( 0 == strcmp( comm_channel, "MPI" ) ) {            
-#if 1 //def MPICHANNEL
-                this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_MPI_t };
-#endif // MPICHANNEL
-            }
-            
-            else {/* Last resort: the flat one */
-                this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_flat_t };
-            }
-        }
+        break;
+    default:
+        std::cout << "Could not understand the collective type specified. Fallback: flat"<< std::endl;
+        this->collectives = std::unique_ptr<Collectives_t>{ new Collectives_flat_t };
+        break;
+
     }
-    
+
     /* TODO check that all the processes use the same module */
     
 
-    /* DOTO send this to the flat module */
+    /* TODO send this to the flat module */
     
     char* mutName;
     if( myInfo.getRank() == 0 ) {

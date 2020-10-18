@@ -36,6 +36,9 @@ template <class T>void shmem_template_flat_reduce_get( T* target, T* source, int
 class Collectives_flat_t : public Collectives_t {
 
  public:
+    Collectives_flat_t(){
+    }
+
     void posh_barrier_all( ) {
         posh_barrier_all_flat();
     }

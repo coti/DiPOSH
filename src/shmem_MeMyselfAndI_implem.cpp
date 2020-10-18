@@ -43,13 +43,16 @@
 #ifdef MPICHANNEL
 #include "posh_mpi.h"
 #endif
-#if 1 //def MPIHUBCHANNEL
+#ifdef MPIHUBCHANNEL
 #include "posh_hub.h"
 #endif
 #include "posh_tcp.h"
 #include "posh_heap.h"
 #ifdef _WITH_KNEM
 #include "posh_knem.h"
+#endif // _WITH_KNEM
+#ifdef _WITH_GASPI
+#include "posh_gaspi.h"
 #endif // _WITH_KNEM
 #if defined( MPILAUNCHER )
 #include <boost/mpi/collectives.hpp>
@@ -63,6 +66,10 @@ extern "C" {
 #include "posh_launcher_padico.h"
 #endif // PADICOLAUNCHER
 
+#ifdef GASPILAUNCHER
+#include "posh_launcher_gaspi.h"
+#endif // GASPILAUNCHER
+
 #include "posh_launcher_sm.h"
 
 #ifdef DISTRIBUTED_POSH
@@ -72,6 +79,7 @@ std::ostream& operator<< ( std::ostream& out, Neighbor_t& n ){
     commtype[TYPE_SM] = "Shared mem";
     commtype[TYPE_MPI] = "MPI";
     commtype[TYPE_NMAD] = "NMad";
+    commtype[TYPE_GASPI] = "GASPI";
     commtype[NONE] = "Unknown";
 
     out << "Neighbor " << n.rank;
@@ -92,6 +100,8 @@ std::map< neighbor_comm_type_t, unsigned int> channel_priorities = { { TYPE_SM, 
                                                                             { TYPE_TCP, 5 },
                                                                             { TYPE_KNEM, 120 },
                                                                             { TYPE_NMAD, 80 } };
+std::map<std::string, neighbor_comm_type_t> communication_typenames;
+
 /* Accessors */
 
 int MeMyselfAndI::getRank(){
@@ -169,6 +179,13 @@ void MeMyselfAndI::initRte( ){
     }
 #endif // MPILAUNCHER
         
+#ifdef GASPILAUNCHER
+    if( isGASPI() ) {
+        myInfo.rte = new Launcher_GASPI();
+        return;
+    }
+#endif // GASPILAUNCHER
+        
 }
 
 void MeMyselfAndI::findAndSetMyRank( ){
@@ -241,7 +258,39 @@ void MeMyselfAndI::allocNeighbors( int nb ) {
 
 int MeMyselfAndI::communicationInit( char* comm_channel ){
 
+    communication_typenames[ "SM"  ]   = TYPE_SM;
+    communication_typenames[ "TCP" ]   = TYPE_TCP;
+    communication_typenames[ "MPI" ]   = TYPE_MPI;
+    communication_typenames[ "KNEM" ]  = TYPE_KNEM;
+    communication_typenames[ "NMAD" ]  = TYPE_NMAD;
+    communication_typenames[ "HUB" ]   = TYPE_HUB;
+    communication_typenames[ "GASPI" ] = TYPE_GASPI;
+
+    /* We cannot initialize the local segment if we are using GASPI.
+       In fact, if we are using GASPI, it should be the only communication
+       channel we are using. */
+    
+#ifdef _WITH_GASPI
+    /* Unless another channel is specified, we are using GASPI.
+       Therefore, it has the highest priority.
+    */
+    if( NULL == comm_channel || 0 == strcmp( comm_channel, "GASPI" )) {
+        try{ /* GASPI */
+            myEndpoints.push_back( new  Endpoint_Gaspi_t);
+            myEndpoints.back().init_end();
+        } catch( int ex ){
+            ;; /* silent */
+        }
+        this->myEndpoint = &( this->myEndpoints.front() );
+    
+        myHeap.setUseSharedHeap( false );
+        return 0;
+    }
+#endif // _WITH_GASPI
+ 
+    
     myHeap.setupSymmetricHeap(); // should be in the SM component
+    myHeap.setUseSharedHeap( true );
 
     /* No channel is provided -> open whatever I can open */
     
@@ -249,12 +298,13 @@ int MeMyselfAndI::communicationInit( char* comm_channel ){
         try{ /* SM */
             myEndpoints.push_back( new Endpoint_SM_t );
             myEndpoints.back().init_end();
+            myEndpointSM = static_cast<Endpoint_SM_t*>( &( myEndpoints.back() ) );
         } catch( int ex ){
             /* Should not happen */
         std::cerr << "Could not open the shared memory communication component" << std::endl;
         }
         
-#if 1 //def MPICHANNEL
+#ifdef MPICHANNEL
         try{ /* MPI */
             myEndpoints.push_back( new Endpoint_MPI_t );
             myEndpoints.back().init_end();
@@ -294,77 +344,98 @@ int MeMyselfAndI::communicationInit( char* comm_channel ){
 #endif // _WITH_NMAD
         
 #ifdef MPIHUBCHANNEL
-        try{ /* HUB */
-            myEndpoints.push_back( new  Endpoint_hub_t);
-            myEndpoints.back().init_end();
-        } catch( int ex ){
-            ;; /* silent */
-        }
+	try{ /* HUB */
+	  myEndpoints.push_back( new  Endpoint_hub_t);
+	  myEndpoints.back().init_end();
+	} catch( int ex ){
+	  ;; /* silent */
+	}
 #endif // MPIHUBCHANNEL
         
     } else { /* if NULL == comm_channel */
-        if( 0 == strcmp( comm_channel, "SM" ) ) {
-            
+
+        switch( getCommType( comm_channel ) ){
+        case TYPE_SM:
             try{ /* SM */
                 myEndpoints.push_back( new Endpoint_SM_t );
                 myEndpoints.back().init_end();
+                myEndpointSM = static_cast<Endpoint_SM_t*>( &(myEndpoints.back()) );
             } catch( int ex ){
                 /* Should not happen */
                 std::cerr << "Could not open the shared memory communication component" << std::endl;
             }
-            
-        } else if ( 0 == strcmp( comm_channel, "MPI" ) ) {            
-#if 1 //def MPICHANNEL
+            break;
+#ifdef MPICHANNEL
+        case TYPE_MPI:
             try{ /* MPI */
                 myEndpoints.push_back( new Endpoint_MPI_t );
                 myEndpoints.back().init_end();
           } catch( int ex ){
                 ;; /* silent */
             }
+            break;
 #endif // MPICHANNEL
-            
-        } else if ( 0 == strcmp( comm_channel, "TCP" ) ) {           
+
  #ifdef _WITH_TCP
+        case TYPE_TCP:
            try{ /* TCP */
-                myEndpoints.push_back( new TCPendpoint_t );
-                myEndpoints.back().init_end();
-                while( ! e.isReady() ){
-                    ;;
-                }
-            } catch( int ex ){
-                ;; /* silent */
-            }
+               myEndpoints.push_back( new TCPendpoint_t );
+               myEndpoints.back().init_end();
+               while( ! e.isReady() ){
+                   ;;
+               }
+           } catch( int ex ){
+               ;; /* silent */
+           }
+           break;
 #endif // _WITH_TCP
             
-        } else if ( 0 == strcmp( comm_channel, "KNEM" ) ) {           
 #ifdef _WITH_KNEM
+        case TYPE_KNEM:
             try{ /* KNEM */
                 myEndpoints.push_back( new  Endpoint_KNEM_t);
                 myEndpoints.back().init_end();       
             } catch( int ex ){
                 ;; /* silent */
             }
+            break;
 #endif // _WITH_KNEM
             
-        } else if ( 0 == strcmp( comm_channel, "NMAD" ) ) {           
 #ifdef _WITH_NMAD
+        case TYPE_NMAD:
             try{ /* NMAD */
                 myEndpoints.push_back( new  Endpoint_NMAD_t);
                 myEndpoints.back().init_end();       
             } catch( int ex ){
                 ;; /* silent */
             }
+            break;
 #endif // _WITH_NMAD
             
-        } else if ( 0 == strcmp( comm_channel, "HUB" ) ) {           
 #ifdef MPIHUBCHANNEL
+        case TYPE_HUB:
             try{ /* HUB */
                 myEndpoints.push_back( new  Endpoint_hub_t);
                 myEndpoints.back().init_end();
             } catch( int ex ){
                 ;; /* silent */
             }
+            break;
 #endif // MPIHUBCHANNEL
+            
+#ifdef _WITH_GASPI
+        case TYPE_GASPI:
+            try{ /* HUB */
+                myEndpoints.push_back( new  Endpoint_Gaspi_t);
+                myEndpoints.back().init_end();
+            } catch( int ex ){
+                ;; /* silent */
+            }
+            break;
+#endif // _WHITH_GASPI
+
+        default:
+            std::cerr << "Did not recognize communication channel type " << comm_channel << std::endl;
         }        
 
     } /* if NULL == comm_channel */
@@ -380,11 +451,38 @@ int MeMyselfAndI::communicationInit( char* comm_channel ){
 
 }
 
+/* With GASPI, we use only GASPI */
+
+void gatherContactInfoGaspi(){
+    int nb, size, i;
+    size = myInfo.getSize();
+
+    for( i = 0 ; i < size ; i++ ) {
+        Neighbor_t n;
+        
+        if( i != myInfo.getRank() ){
+            std::cout << "Neighbor " << i << std::endl;
+            ContactInfo_Gaspi ci;
+            ci.setRank( i );
+            ci.setType( TYPE_GASPI );
+            myInfo.neigh_ci.push_back( &ci );
+
+            n.comm_type = TYPE_GASPI;
+            n.communications = new Communication_Gaspi_t();
+            n.communications->init_comm( i );
+            n.communications->setContactInfo( ci );
+            myInfo.getNeighbors()->push_back( n );
+        }
+    }
+    
+}
+
 /* This is necessary because the number of endpoints might not be the same on all 
    the neighbors -> Allgatherv 
    TODO: support Padico
 */
 
+#if MPILAUNCHER
 void gatherContactInfo(){
 
     int nb, size, total;
@@ -647,6 +745,8 @@ void gatherContactInfo(){
     
 }
 
+#endif
+
 /* Initialize the neighbors, ie how I can communicate with each one of them 
  */
 
@@ -654,7 +754,21 @@ void MeMyselfAndI::initNeighbors( int nb, char* comm_channel ) {
 
     /* Get the other processes' contact information and initialize the communications */
 
-    gatherContactInfo();
+#ifdef MPILAUNCHER
+    if( isMPI() ) {
+        gatherContactInfo();
+        return;
+    }
+#endif
+
+#ifdef GASPILAUNCHER
+    if( isGASPI() ) {
+        std::cout << "Gather gaspi" << std::endl;
+        gatherContactInfoGaspi();
+        return;
+    }
+#endif
+
 
 #if 0
     Trucs qui peuvent être utiles:

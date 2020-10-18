@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2019 LIPN - Universite Paris 13
+ * Copyright (c) 2020      Universite Sorbonne Paris Nord
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -24,7 +25,6 @@
 #include "shmem_tcp.h"
 #include "posh_heap.h"
 
-bool checkSize( size_t );
 
 
 /* This routine allocates a block of memory in the symmetric heap
@@ -47,14 +47,15 @@ bool checkSize( size_t );
  */
 
 void *shmalloc( size_t size ){
-    if( ! checkSize( size ) ) return NULL;
+    
     void* ptr = NULL;
-    try { 
-        ptr = myHeap.myHeap.allocate( size );
-    } catch (boost::interprocess::bad_alloc &ex) {
-        std::cerr << ex.what() << std::endl; 
-    } 
+    if( myHeap.useSharedHeap() ){
+        ptr = myHeap.heapAlloc( size );
+    } else {
+        ptr = myInfo.myEndpoints[0].posh__shmalloc( size );
+    }
     shmem_barrier_all();
+    
     return ptr;
 }
 
@@ -77,11 +78,11 @@ void *shmalloc( size_t size ){
 void *shmemalign( size_t alignment, size_t size ){
     if( ! checkSize( size ) ) return NULL;
     void* ptr = NULL;
-    try { 
-        ptr = myHeap.myHeap.allocate_aligned( size, alignment );
-    } catch (boost::interprocess::bad_alloc &ex) {
-        std::cerr << ex.what() << std::endl; 
-    } 
+    if( myHeap.useSharedHeap() ){
+        ptr = myHeap.shmemalign( alignment, size );
+    } else {
+        ptr = myInfo.myEndpoints[0].posh__shmemalign( alignment, size );
+    }
     shmem_barrier_all();
     return ptr;
 }
@@ -117,10 +118,14 @@ void *shmemalign( size_t alignment, size_t size ){
  */
 
 void *shrealloc( void* ptr, size_t size ){
-    if( ! checkSize( size ) ) return NULL;
     if( size < 0 ) {
         std::cerr << "shrealloc: the size parameter must be greater or equal to 0" << std::endl;
         return NULL;
+    }
+    if( myHeap.useSharedHeap() ){
+        ptr = myHeap.shrealloc( ptr, size );
+    } else {
+        ptr = myInfo.myEndpoints[0].posh__shrealloc( ptr, size );
     }
 
     /* TODO */
@@ -143,10 +148,10 @@ void *shrealloc( void* ptr, size_t size ){
 void shfree( void* ptr ){
 
     if( NULL != ptr ) {
-        try{
-            myHeap.myHeap.deallocate( ptr );
-        } catch( int e ) {
-            ;
+        if( myHeap.useSharedHeap() ){
+            myHeap.shfree( ptr );
+        } else {
+            myInfo.myEndpoints[0].posh__shfree( ptr );
         }
     }
 
@@ -156,17 +161,6 @@ void shfree( void* ptr ){
 
 
 
-/* internal */
-
-bool checkSize( size_t size ) {
-    managed_shared_memory::size_type free_memory = myHeap.myHeap.get_free_memory();
-    if( free_memory < size ) {
-        std::cerr << "Warning: could not allocate all the requested space -- " << size << " Bytes asked, " << free_memory << " Bytes left" << std::endl;
-        return false;
-    }
-    return true;
-}
-
 /* Fake shmalloc, for internal use only.
    Allocates space in the symmetric heap without calling shmem_barrier_all 
    at the end.
@@ -175,7 +169,6 @@ bool checkSize( size_t size ) {
 */
 
 void* _shmallocFake( size_t size ){
-    if( ! checkSize( size ) ) return NULL;
     void* ptr = NULL;
     try { 
         ptr = myHeap.myHeap.allocate( size );

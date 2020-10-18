@@ -56,12 +56,15 @@ endif
 if ENABLE_LAUNCHERPADICO
 libshmem_la_SOURCES += posh_launcher_padico.cpp posh_launcher_padico.h
 endif
+if ENABLE_LAUNCHERGASPI
+libshmem_la_SOURCES += posh_launcher_gaspi.cpp posh_launcher_gaspi.h
+endif
 
 #################################################################################
 # Communication channel
 #################################################################################
 
-libshmem_la_SOURCES += posh_neighbor.h posh_heap.h posh_communication.h
+libshmem_la_SOURCES += posh_neighbor.h posh_heap.cpp posh_heap.h posh_communication.h
 libshmem_la_SOURCES += posh_sm.cpp posh_sm.h
 
 if ENABLE_COMM_TCP
@@ -76,6 +79,9 @@ endif
 if ENABLE_COMM_KNEM
 libshmem_la_SOURCES += posh_knem.cpp posh_knem.h
 endif
+if ENABLE_COMM_GASPI
+libshmem_la_SOURCES += posh_gaspi.cpp posh_gaspi.h
+endif
 if ENABLE_COMM_HUB_MPI
 libshmem_la_SOURCES += posh_hub.cpp posh_hub.h
 endif
@@ -89,6 +95,9 @@ libshmem_la_SOURCES +=  posh_coll_flat.cpp posh_coll_flat.h \
 			posh_collectives.cpp posh_collectives.tpp posh_collectives.h
 if ENABLE_COMM_MPI
 libshmem_la_SOURCES += posh_coll_mpi.cpp posh_coll_mpi.h
+endif
+if ENABLE_COMM_GASPI
+libshmem_la_SOURCES += posh_coll_gaspi.cpp posh_coll_gaspi.h
 endif
 
 #################################################################################

@@ -58,6 +58,12 @@
 #ifdef MPICHANNEL
 #include "posh_mpi.h"
 #endif // _WITH_MPI
+#ifdef _WITH_GASPI
+#include "posh_gaspi.h"
+#endif // _WITH_GASPI
+
+
+class Endpoint_SM_t;
 
 //#include <boost/stacktrace.hpp>
 
@@ -91,10 +97,13 @@ struct Collective_t {
 class MeMyselfAndI {
 
 public:
-    //    std::vector<std::pair<std::unique_ptr<Endpoint_t>, neighbor_comm_type_t> > myEndpoints;
+        //    std::vector<std::pair<std::unique_ptr<Endpoint_t>, neighbor_comm_type_t> > myEndpoints;
     //  std::vector<std::pair<Endpoint_t, neighbor_comm_type_t> > myEndpoints;
     //  std::vector<Endpoint_t> myEndpoints;
     boost::ptr_vector <Endpoint_t> myEndpoints;
+    Endpoint_t* myEndpoint; // should be able to have several endpoints there
+    Endpoint_SM_t* myEndpointSM;
+
 
     /* Info on my neighbors: their CI and the communication channels with them */
     boost::ptr_vector<Communication_t> comm;
@@ -111,7 +120,8 @@ public:
 
     //    managed_shared_memory* neighbors;
     std::vector<Neighbor_t> neighbors;
-    
+
+
 
 #ifdef _WITH_TCP
     int tcp_port;
@@ -124,7 +134,6 @@ public:
     //   std::vector<ContactInfo> myContactInfo;// TODO
     ContactInfo* myContactInfo;
 
-    Endpoint_t* myEndpoint; // should be able to have several endpoints there
     //std::vector<std::unique_ptr<Endpoint_t> > myEndpoints;
 
 #if 0
@@ -186,7 +195,9 @@ public:
         
     }
     ~MeMyselfAndI(){
-        // delete[] neighbors;
+        myEndpoint = NULL;
+        myEndpointSM = NULL;
+        /* TODO there is a little segfault here */
     }
  
  public:
@@ -280,7 +291,6 @@ public:
     void exitCheckpointing( void );
 #endif
 };
-
 
 extern MeMyselfAndI myInfo;
 

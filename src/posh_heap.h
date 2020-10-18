@@ -35,6 +35,7 @@ class SymmetricHeap{
     char* heapName;
     unsigned long long int heapSize;
     uintptr_t baseAddr;
+    bool inuse;
     bip::managed_shared_memory::handle_t offset_handle;
 
  public:
@@ -71,6 +72,10 @@ class SymmetricHeap{
     void createSharedHeap( unsigned long long int ) ;
     void deleteSharedHeap( void );
     char* buildHeapName( int );
+    void* heapAlloc( size_t );
+    void* shmemalign( size_t, size_t );
+    void* shrealloc( void*, size_t );
+    void shfree( void* );
 
     /* Accessors */
 
@@ -84,6 +89,9 @@ class SymmetricHeap{
 
     uintptr_t getBaseAddr();
     bip::managed_shared_memory::handle_t getOffsetHandle(){ return this->offset_handle; }
+
+    bool useSharedHeap(){ return this->inuse; }
+    void setUseSharedHeap( bool b ) { this->inuse = b; }
 
     /* Operators */
 };
@@ -136,5 +144,7 @@ inline void* _getRemoteAddr( const void* addr, int pe ) {
 inline bip::managed_shared_memory* _getMyHeap(){
     return &(myHeap.myHeap);
 }
+
+bool checkSize( size_t );
 
 #endif // _POSH_HEAP_H_

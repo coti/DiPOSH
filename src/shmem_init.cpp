@@ -127,7 +127,6 @@ void start_pes( int npes ) {
     if( 0 > rc ) {
         exit( rc );
     }
-    //    myHeap.setupSymmetricHeap();    
     myInfo.collectiveInit( coll_type );
     myInfo.allocNeighbors( myInfo.getSize() );
 

@@ -34,6 +34,15 @@ int _shmem_binomial_binbase_size( int nb ) ;
 int _shmem_binomial_myfather( int PE_root, int PE_start, int logPE_stride, int PE_size ) ;
 int _shmem_binomial_children( int rank, int size );
 
+typedef enum { COLL_MPI, COLL_GASPI, COLL_NULL, COLL_UNKNOWN } collective_types;
+static std::map<std::string, collective_types> collective_typenames;
+
+inline unsigned int getCollType( char* coll_type ){
+    if( NULL == coll_type ) return COLL_NULL;
+    if( collective_typenames.find( coll_type ) == collective_typenames.end() ) return COLL_UNKNOWN;
+    return collective_typenames[ std::string( coll_type ) ];
+}
+
 
 
 #include "shmem_collectives.tpp"

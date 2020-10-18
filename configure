@@ -639,6 +639,8 @@ LIBOBJS
 DMTCP_HOME
 ENABLE_FT_FALSE
 ENABLE_FT_TRUE
+ENABLE_COMM_GASPI_FALSE
+ENABLE_COMM_GASPI_TRUE
 ENABLE_COMM_HUB_MPI_FALSE
 ENABLE_COMM_HUB_MPI_TRUE
 ENABLE_COMM_NMAD_FALSE
@@ -649,6 +651,8 @@ ENABLE_COMM_TCP_FALSE
 ENABLE_COMM_TCP_TRUE
 ENABLE_COMM_KNEM_FALSE
 ENABLE_COMM_KNEM_TRUE
+ENABLE_LAUNCHERGASPI_FALSE
+ENABLE_LAUNCHERGASPI_TRUE
 ENABLE_LAUNCHERPADICO_FALSE
 ENABLE_LAUNCHERPADICO_TRUE
 MPILIBS
@@ -804,12 +808,14 @@ enable_safe
 enable_launcher_local
 enable_launcher_mpi
 enable_launcher_padico
+enable_launcher_gaspi
 with_memcpy
 enable_knem_comm
 enable_tcp_comm
 enable_mpi_comm
 enable_nmad_comm
 enable_mpi_hub
+enable_gaspi_comm
 with_collective
 with_faulttolerance
 with_dmtcp
@@ -1465,11 +1471,13 @@ Optional Features:
   --enable-launcher-mpi   Enable MPI launcher [default=disabled]
   --enable-launcher-padico
                           Enable PadicoTM launcher [default=disabled]
+  --enable-launcher-gaspi Enable gaspi launcher [default=disabled]
   --enable-knem-comm      Enable local KNEM communications [default=no]
   --enable-tcp-comm       Enable TCP communications (slow) [default=no]
   --enable-mpi-comm       Enable MPI communications [default=no]
   --enable-nmad-comm      Enable NewMadeleine communications [default=no]
   --enable-mpi-hub        Enable hub communications using MPI [default=no]
+  --enable-gaspi-comm     Enable GASPI communications [default=no]
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -16199,6 +16207,7 @@ $as_echo_n "checking user-supplied Boost installation... " >&6; }
        LDFLAGS="-L${BOOSTPATH}/lib ${LDFLAGS}"
 fi
 
+# TODO not always necessary
 #AC_LANG_PUSH([C++])
 
 for ac_header in boost/interprocess/managed_shared_memory.hpp
@@ -17737,6 +17746,30 @@ fi
 fi
 
 
+# Check whether --enable-launcher-gaspi was given.
+if test "${enable_launcher_gaspi+set}" = set; then :
+  enableval=$enable_launcher_gaspi;   if true; then
+  ENABLE_LAUNCHERGASPI_TRUE=
+  ENABLE_LAUNCHERGASPI_FALSE='#'
+else
+  ENABLE_LAUNCHERGASPI_TRUE='#'
+  ENABLE_LAUNCHERGASPI_FALSE=
+fi
+
+          CPPFLAGS+="-DGASPILAUNCHER  -DDISTRIBUTED_POSH "
+
+else
+    if false; then
+  ENABLE_LAUNCHERGASPI_TRUE=
+  ENABLE_LAUNCHERGASPI_FALSE='#'
+else
+  ENABLE_LAUNCHERGASPI_TRUE='#'
+  ENABLE_LAUNCHERGASPI_FALSE=
+fi
+
+fi
+
+
 #################################################################################
 # CHOICE OF MEMCPY
 #################################################################################
@@ -18285,6 +18318,30 @@ fi
 fi
 
 
+# Check whether --enable-gaspi-comm was given.
+if test "${enable_gaspi_comm+set}" = set; then :
+  enableval=$enable_gaspi_comm;   if true; then
+  ENABLE_COMM_GASPI_TRUE=
+  ENABLE_COMM_GASPI_FALSE='#'
+else
+  ENABLE_COMM_GASPI_TRUE='#'
+  ENABLE_COMM_GASPI_FALSE=
+fi
+
+       	  CPPFLAGS+=" -DDISTRIBUTED_POSH   -D_WITH_GASPI "
+else
+    if false; then
+  ENABLE_COMM_GASPI_TRUE=
+  ENABLE_COMM_GASPI_FALSE='#'
+else
+  ENABLE_COMM_GASPI_TRUE='#'
+  ENABLE_COMM_GASPI_FALSE=
+fi
+
+fi
+
+
+
 #################################################################################
 # CHOICE OF COLLECTIVE COMMUNICATIONS
 #################################################################################
@@ -18574,6 +18631,14 @@ if test -z "${ENABLE_LAUNCHERPADICO_TRUE}" && test -z "${ENABLE_LAUNCHERPADICO_F
   as_fn_error $? "conditional \"ENABLE_LAUNCHERPADICO\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
+if test -z "${ENABLE_LAUNCHERGASPI_TRUE}" && test -z "${ENABLE_LAUNCHERGASPI_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_LAUNCHERGASPI\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_LAUNCHERGASPI_TRUE}" && test -z "${ENABLE_LAUNCHERGASPI_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_LAUNCHERGASPI\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${ENABLE_COMM_KNEM_TRUE}" && test -z "${ENABLE_COMM_KNEM_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_COMM_KNEM\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -18612,6 +18677,14 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_COMM_HUB_MPI_TRUE}" && test -z "${ENABLE_COMM_HUB_MPI_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_COMM_HUB_MPI\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_COMM_GASPI_TRUE}" && test -z "${ENABLE_COMM_GASPI_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_COMM_GASPI\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_COMM_GASPI_TRUE}" && test -z "${ENABLE_COMM_GASPI_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_COMM_GASPI\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_FT_TRUE}" && test -z "${ENABLE_FT_FALSE}"; then

@@ -74,6 +74,7 @@ if test -n "$BOOSTPATH"; then
        LDFLAGS="-L${BOOSTPATH}/lib ${LDFLAGS}"
 fi
 
+# TODO not always necessary
 #AC_LANG_PUSH([C++])
 AC_CHECK_HEADERS([boost/interprocess/managed_shared_memory.hpp], [],
     [AC_MSG_ERROR(You need the Boost Interprocess libraries.)])
@@ -183,6 +184,13 @@ AC_ARG_ENABLE([launcher-padico],
        	],
 	[ AM_CONDITIONAL(ENABLE_LAUNCHERPADICO, false) ] )
 
+AC_ARG_ENABLE([launcher-gaspi],
+	AS_HELP_STRING([--enable-launcher-gaspi], [Enable gaspi launcher [default=disabled]]),
+	[ AM_CONDITIONAL(ENABLE_LAUNCHERGASPI, true)
+          CPPFLAGS+="-DGASPILAUNCHER  -DDISTRIBUTED_POSH "
+       	],
+	[ AM_CONDITIONAL(ENABLE_LAUNCHERGASPI, false) ] )
+
 #################################################################################
 # CHOICE OF MEMCPY
 #################################################################################
@@ -241,7 +249,7 @@ AC_ARG_ENABLE([tcp-comm],
 	AS_HELP_STRING([--enable-tcp-comm], [Enable TCP communications (slow) [default=no]]),
 	[ AM_CONDITIONAL(ENABLE_COMM_TCP, true)
        	  CPPFLAGS+=" -DDISTRIBUTED_POSH   -D_WITH_TCP "],
-	[ AM_CONDITIONAL(ENABLE_COMM_TCP, false) ] )
+	  [ AM_CONDITIONAL(ENABLE_COMM_TCP, false) ] )
 
 AC_ARG_ENABLE([mpi-comm],
 	AS_HELP_STRING([--enable-mpi-comm], [Enable MPI communications [default=no]]),
@@ -267,6 +275,13 @@ AC_ARG_ENABLE([mpi-hub],
  		   [ AC_MSG_FAILURE( MPI is required ) ] )
           ],
 	AM_CONDITIONAL([ENABLE_COMM_HUB_MPI], false))
+
+AC_ARG_ENABLE([gaspi-comm],
+	AS_HELP_STRING([--enable-gaspi-comm], [Enable GASPI communications [default=no]]),
+	[ AM_CONDITIONAL(ENABLE_COMM_GASPI, true)
+       	  CPPFLAGS+=" -DDISTRIBUTED_POSH   -D_WITH_GASPI "],
+	[ AM_CONDITIONAL(ENABLE_COMM_GASPI, false) ] )
+
 
 #################################################################################
 # CHOICE OF COLLECTIVE COMMUNICATIONS

@@ -121,6 +121,21 @@ public:
         return &(this->ci);
     }
     int finalize(){ return 0; /* we don't need to call MPI_Finalize */ } 
+    void* posh__shmalloc( size_t s ){
+        std::cerr << "posh__shmalloc should not be called from an Endpoint_MPI_t object" << std::endl;
+        return NULL;
+    }
+    void* posh__shmemalign( size_t a, size_t s ){
+        std::cerr << "posh__shmemalign should not be called from an Endpoint_MPI_t object" << std::endl;
+        return NULL;
+    }
+    void* posh__shrealloc( void* p, size_t s ){
+        std::cerr << "posh__shrealloc should not be called from an Endpoint_MPI_t object" << std::endl;
+        return NULL;
+    }
+    void posh__shfree( void* p ){
+        std::cerr << "posh__shfree should not be called from an Endpoint_MPI_t object" << std::endl;
+    }
 };
 #else
 class Endpoint_MPI_t : public Endpoint_t {

@@ -38,7 +38,7 @@ namespace boost {
 
 typedef uint64_t knem_cookie_t;
 
-enum  neighbor_comm_type_t: int {TYPE_SM, TYPE_TCP, TYPE_MPI, TYPE_KNEM, TYPE_NMAD, TYPE_HUB, NONE};
+enum  neighbor_comm_type_t: int {TYPE_SM, TYPE_TCP, TYPE_MPI, TYPE_KNEM, TYPE_NMAD, TYPE_HUB, TYPE_GASPI, TYPE_NULL, NONE};
 
 /* Will be more complex when we support several types of networks */
 /* TODO: we need an interface here */

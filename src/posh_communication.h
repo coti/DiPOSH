@@ -21,6 +21,7 @@
 #ifndef _POSH_COMMUNICATION_H_
 #define _POSH_COMMUNICATION_H_
 
+#include <map>
 #include "posh_contactinfo.h"
 
 
@@ -36,6 +37,15 @@ class Communication_t {
 
     /* TODO atomic!! */
 };
+
+extern std::map<std::string, neighbor_comm_type_t> communication_typenames;
+
+inline unsigned int getCommType( char* comm_type ){
+    if( NULL == comm_type ) return TYPE_NULL;
+    if( communication_typenames.find( comm_type ) == communication_typenames.end() ) return NONE;
+    return communication_typenames[ std::string( comm_type ) ];
+}
+
 
 
 #endif // _POSH_COMMUNICATION_H_

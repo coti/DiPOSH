@@ -20,6 +20,7 @@
 
 #ifndef _POSH_COLLECTIVES_H_
 #define _POSH_COLLECTIVES_H_
+#include <cstdint>
 
 class Collectives_t {
 

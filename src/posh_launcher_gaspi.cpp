@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 LIPN - Universite Paris 13
+ * Copyright (c) 2020 LIPN - Universite Sorbonne Paris Nord
  *                    All rights reserved.
  *
  * This file is part of POSH.
@@ -18,17 +18,17 @@
  * along with POSH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _LAUNCHER_H_
-#define _LAUNCHER_H_
+#include "posh_launcher_gaspi.h"
 
-typedef enum { RTE_SM, RTE_MPI, RTE_PADICO, RTE_GASPI } rte_type_t ;
+#define GPI_ENV_VARIABLE "GASPI_NRANKS"
 
-class Launcher_t {
- public:
-    virtual rte_type_t getType( void ) = 0;
-    virtual int getRank( void ) = 0;
-    virtual int getSize( void ) = 0;
-    virtual bool isDistributed( void ) = 0;
-};
+bool isGASPI(){
 
-#endif // _LAUNCHER_H_
+  char* size;
+  size = std::getenv( GPI_ENV_VARIABLE );
+  if( NULL != size ){
+    return true;
+  }
+
+  return false;
+}
