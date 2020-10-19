@@ -77,14 +77,11 @@ if test -n "$BOOSTPATH"; then
        LDFLAGS="-L${BOOSTPATH}/lib ${LDFLAGS}"
 fi
 
-<<<<<<< HEAD
 # TODO not always necessary
-=======
 ACX_MPI([], [AC_MSG_ERROR([Cannot find an MPI C++ compiler wrapper.])])
 CXX="$MPICXX"
 CXXCPP="$CXX -E"
 
->>>>>>> a67d7898fa1b0bc992793f37bee2efdb97f18ee1
 #AC_LANG_PUSH([C++])
 AC_CHECK_HEADERS([boost/interprocess/managed_shared_memory.hpp], [],
     [AC_MSG_ERROR(You need the Boost Interprocess libraries.)])

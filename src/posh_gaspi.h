@@ -27,7 +27,7 @@
 #include <GASPI.h>
 #include <iostream>
 
-#define GASPI_SEGMENT_SIZE  0x1 << 10
+#define GASPI_SEGMENT_SIZE  0x1 << 17// TODO environment variable
 
 class ContactInfo_Gaspi : public ContactInfo {
 
@@ -83,6 +83,9 @@ protected:
     gaspi_pointer_t segment_begin;
     gaspi_queue_id_t queue_id = 0;
 
+    gaspi_segment_id_t local_id;
+    gaspi_pointer_t local_begin;
+
 public:
     void init_end( void );
 
@@ -99,8 +102,10 @@ public:
     neighbor_comm_type_t getType(){ return TYPE_GASPI; }
 
     gaspi_segment_id_t getSegmentId() { return this->segment_id; }
+    gaspi_segment_id_t getLocalSegmentId() { return this->local_id; }
     gaspi_size_t getSegmentSize(){ return segment_size; }
     gaspi_pointer_t getSegmentBegin(){ return segment_begin; }
+    gaspi_pointer_t getLocalSegmentBegin(){ return local_begin; }
     gaspi_queue_id_t getQueue(){ return queue_id; }
 
 

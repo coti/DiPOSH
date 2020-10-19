@@ -35,12 +35,19 @@ void Endpoint_Gaspi_t::init_end(){
 
   //  std::cout << "Rank " << rank << " segment created" << std::endl;
   
-  gaspi_segment_create( this->segment_id, this->segment_size,
+  gaspi_segment_create( this->segment_id, 2*this->segment_size,
                         GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_UNINITIALIZED );
-  
+
   /* Get a pointer to the beginning of this segment */
 
   gaspi_segment_ptr( this->segment_id, &( this->segment_begin ) );
+  printf( "init segment %d beginning %p\n", this->segment_id, this->segment_begin ) ;
+
+  /* We need another subsegment for temporary buffers between the shared and the local memory */
+
+  this->local_id = this->segment_id;
+  this->local_begin = this->segment_begin + this->segment_size;
+  printf( "init local segment %d beginning %p\n", this->local_id, this->local_begin ) ;
   
   this->ci.setRank( (int)rank );
   
@@ -58,21 +65,40 @@ void Communication_Gaspi_t::posh__get( void* target, const void* source, size_t 
 
   Endpoint_Gaspi_t* myEndpointGaspi = static_cast<Endpoint_Gaspi_t*>(  myInfo.myEndpoint );
 
-  gaspi_offset_t offset_remote = (char*)target - (char*)(this->segment_begin);
-  gaspi_offset_t offset_local = (char*)source - (char*)(this->segment_begin);
+  gaspi_offset_t offset_remote = 0; // (char*)target - (char*)(this->segment_begin);
+  gaspi_offset_t offset_local = myEndpointGaspi->getSegmentSize(); // (char*)source - (char*)(this->segment_begin);
 
-  gaspi_write( myEndpointGaspi->getSegmentId(), offset_local, pe, myEndpointGaspi->getSegmentId(), offset_remote, size, myEndpointGaspi->getQueue(), GASPI_BLOCK );
+  //   std::cout << "toto" << std::endl;
+  // printf( "copy %p to %p\n", target, myEndpointGaspi->getSegmentBegin() +  myEndpointGaspi->getSegmentSize());
+  gaspi_wait( myEndpointGaspi->getQueue(), GASPI_BLOCK );
 
+  gaspi_read( myEndpointGaspi->getLocalSegmentId(), offset_local, pe, myEndpointGaspi->getSegmentId(), offset_remote, size, myEndpointGaspi->getQueue(), GASPI_BLOCK );
+  gaspi_wait( myEndpointGaspi->getQueue(), GASPI_BLOCK );
+
+  /* copy locally */
+
+  memcpy( target, myEndpointGaspi->getSegmentBegin() + offset_local, size );
+
+  //  gaspi_barrier( GASPI_GROUP_ALL, GASPI_BLOCK );
 }
 
 void Communication_Gaspi_t::posh__put( void* target, const void* source, size_t size, int pe ){
   Endpoint_Gaspi_t* myEndpointGaspi = static_cast<Endpoint_Gaspi_t*>(  myInfo.myEndpoint );
 
-  gaspi_offset_t offset_remote = (char*)target - (char*)(this->segment_begin);
-  gaspi_offset_t offset_local = (char*)source - (char*)(this->segment_begin);
+  gaspi_offset_t offset_remote = 0; //(char*)target - (char*)(this->segment_begin);
+  gaspi_offset_t offset_local = this->segment_size; // (char*)source - (char*)(this->segment_begin);
 
-  std::cout << "offset " << offset_local << " " << offset_remote << std::endl;
+  //  std::cout << "offset " << offset_local << " " << offset_remote << std::endl;
 
-  gaspi_read( myEndpointGaspi->getSegmentId(), offset_local, pe, myEndpointGaspi->getSegmentId(), offset_remote, size, myEndpointGaspi->getQueue(), GASPI_BLOCK );
+  /* copy locally */
+
+  //  printf( "copy %p to %p\n", source, myEndpointGaspi->getSegmentBegin() +  myEndpointGaspi->getSegmentSize());
+
+   memcpy( myEndpointGaspi->getSegmentBegin()+  myEndpointGaspi->getSegmentSize(), source, size );
+
+  /* Transfer */
+  
+  gaspi_write( myEndpointGaspi->getLocalSegmentId(), offset_local, pe, myEndpointGaspi->getSegmentId(), offset_remote, size, myEndpointGaspi->getQueue(), GASPI_BLOCK );
+  gaspi_wait( myEndpointGaspi->getQueue(), GASPI_BLOCK );
 
 }

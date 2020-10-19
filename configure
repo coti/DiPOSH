@@ -16212,9 +16212,7 @@ $as_echo_n "checking user-supplied Boost installation... " >&6; }
        LDFLAGS="-L${BOOSTPATH}/lib ${LDFLAGS}"
 fi
 
-<<<<<<< HEAD
 # TODO not always necessary
-=======
 
 
 
@@ -16403,7 +16401,6 @@ fi
 CXX="$MPICXX"
 CXXCPP="$CXX -E"
 
->>>>>>> a67d7898fa1b0bc992793f37bee2efdb97f18ee1
 #AC_LANG_PUSH([C++])
 
 for ac_header in boost/interprocess/managed_shared_memory.hpp

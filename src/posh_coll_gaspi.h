@@ -46,7 +46,7 @@ class Collectives_GASPI_t : public Collectives_t {
     }
 
     void posh_barrier_all( ) {
-        std::cout << "Gaspi barrier" << std::endl;
+        //        std::cout << "Gaspi barrier" << std::endl;
         gaspi_barrier( GASPI_GROUP_ALL, GASPI_BLOCK );
     }
     void posh_barrier( int PE_start, int logPE_stride, int PE_size, long *pSync ){
