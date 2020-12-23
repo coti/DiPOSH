@@ -1,0 +1,15 @@
+#!/usr/bin/env gnuplot
+
+set term pdf font ",22"
+set output "dahu_mpi_bysocket_bw.pdf"
+
+set xlabel "Message size (B)"
+set ylabel "Throughput (Gb/s)"
+set logscale x
+set key left
+set xtics rotate
+set format x "%2.0t.10^{%L}"
+set yrange [:600]
+
+plot "mpi_bysocket_get.dat" u 1:($2=="inf"?(8*$1/$3):$2) w lp lw 3 t "Get", \
+     "mpi_bysocket_put.dat" u 1:($2=="inf"?(8*$1/$3):$2) w lp lw 3 t "Put"

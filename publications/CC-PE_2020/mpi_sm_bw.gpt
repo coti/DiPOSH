@@ -1,0 +1,14 @@
+#!/usr/bin/env gnuplot
+
+set term pdf font ",24"
+set output "mpi_sm_bw.pdf"
+
+set xlabel "Message size (B)"
+set ylabel "Throughput (Gb/s)"
+set logscale x
+set key left
+set xtics rotate
+set format x "10^{%L}"
+
+plot "mpi_sm_get.dat" u 1:(8*$1/$3) w lp lw 3 t "Get", \
+     "mpi_sm_put.dat" u 1:(8*$1/$3) w lp lw 3 t "Put"

@@ -1,0 +1,16 @@
+#!/usr/bin/env gnuplot
+
+set term pdf
+set output "summa_2048.pdf"
+
+set xlabel "Number of processes"
+set ylabel "Execution time (s)"
+set y2label "Speed-up"
+
+#set yrange[:8]
+set y2range[:200]
+set y2tics nomirror
+set ytics nomirror
+
+plot "2048.dat" u 3:($4/1e6) w lp lw 3 t "Execution time", \
+     "2048.dat" u 3:(866929.785000*4/$4) w lp lw 3 axis x1y2 t "Speed-up"

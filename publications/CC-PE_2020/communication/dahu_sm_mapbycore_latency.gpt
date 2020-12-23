@@ -1,0 +1,13 @@
+#!/usr/bin/env gnuplot
+
+set term pdf font ",22"
+set output "dahu_sm_bycore_latency.pdf"
+
+set xlabel "Message size (B)"
+set ylabel "Time (ns)"
+set xrange [0:64]
+set yrange [0:60]
+set key bottom
+
+plot "sm_bycore_get.dat" u 1:3 w lp lw 3 t "Get", \
+     "sm_bycore_put.dat" u 1:3 w lp lw 3 t "Put"
